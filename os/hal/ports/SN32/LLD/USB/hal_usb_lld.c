@@ -621,12 +621,15 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
     // uint16_t                epr;
     // sn32_usb_descriptor_t   *dp;
     const USBEndpointConfig *epcp = usbp->epc[ep];
-    uint8_t hwep;
+    volatile	uint32_t	*pUsbReg;
+    pUsbReg = (&SN_USB->EP0CTL) + ep;
+    // uint8_t hwep;
 
     if (epcp->in_state != NULL) {
-        hwep = usbp->epnext;
-        usbp->epnext += 1;
-        osalDbgAssert(usbp->epnext <= USB_MAX_ENDPOINTS, "No endpoints left");
+        // pEPn_ptr = &SN_USB->EP0CTL + ep;
+        // hwep = usbp->ep0next;
+        // usbp->ep0next += 1;
+        // osalDbgAssert(usbp->ep0next <= USB_MAX_ENDPOINTS, "No endpoints left");
         // uint32_t address = ep * 64;
         // USB_EPnBufferOffset(ep,address);
         // USBD->EP[hwep].BUFSEG = usb_alloc_buf(usbp, epcp->in_maxsize);
@@ -634,28 +637,29 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
         if (epcp->ep_mode == USB_EP_MODE_TYPE_CTRL)
         /* 2 == in */
         // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (2 << USBD_CFG_STATE_Pos) |  USBD_CFG_CSTALL_Msk;
-        // SN_USB->CFG =
+        *pUsbReg = (mskEPn_CNT|mskEPn_ENDP_STATE|mskEPn_ENDP_STATE_STALL);
         else
         // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (2 << USBD_CFG_STATE_Pos);
-        // SN_USB->CFG =
-        epcp->in_state->hwEp = hwep;
+        *pUsbReg = (mskEPn_CNT|mskEPn_ENDP_STATE);
+        // epcp->in_state->txbuf = SN_USB->EP1BUFOS;
     }
 
     if (epcp->out_state != NULL) {
-        hwep = usbp->epnext;
-        usbp->epnext += 1;
-        osalDbgAssert(usbp->epnext <= USB_MAX_ENDPOINTS, "No endpoints left");
+        // hwep = usbp->epnext;
+        // pEPn_ptr = &SN_USB->EP0CTL + ep;
+        // usbp->epnext += 1;
+        // osalDbgAssert(usbp->epnext <= USB_MAX_ENDPOINTS, "No endpoints left");
 
         // USBD->EP[hwep].BUFSEG = usb_alloc_buf(usbp, epcp->out_maxsize);
         SN_USB->EP1BUFOS = usb_pm_alloc(usbp, epcp->in_maxsize);
         if (epcp->ep_mode == USB_EP_MODE_TYPE_CTRL)
         /* 1 == Out */
         // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (1 << USBD_CFG_STATE_Pos) | USBD_CFG_CSTALL_Msk;
-        // SN_USB->CFG =
+        *pUsbReg = (mskEPn_ENDP_STATE|mskEPn_ENDP_STATE_STALL);
         else
         // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (1 << USBD_CFG_STATE_Pos);
-        // SN_USB->CFG =
-        epcp->out_state->hwEp = hwep;
+        *pUsbReg = (mskEPn_ENDP_STATE);
+        // epcp->out_state->rxbuf = SN_USB->EP1BUFOS;
     }
 
 
