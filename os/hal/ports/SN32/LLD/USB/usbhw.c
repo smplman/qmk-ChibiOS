@@ -231,7 +231,7 @@ void USB_Init(void)
 	USB_EPnBufferOffset(2,EP2_BUFFER_OFFSET_VALUE);
 	USB_EPnBufferOffset(3,EP3_BUFFER_OFFSET_VALUE);
 	USB_EPnBufferOffset(4,EP4_BUFFER_OFFSET_VALUE);
-	USB_EPnBufferOffset(5,EP5_BUFFER_OFFSET_VALUE);
+	// USB_EPnBufferOffset(5,EP5_BUFFER_OFFSET_VALUE);
 	// USB_EPnBufferOffset(6,EP6_BUFFER_OFFSET_VALUE);
 
 	/* Initialize EP1~EP6 RAM point address to array(wUSB_EPnOffset).*/
@@ -250,7 +250,7 @@ void USB_Init(void)
 	*(pRam+2) = USB_EP2_PACKET_SIZE;
 	*(pRam+3) = USB_EP3_PACKET_SIZE;
 	*(pRam+4) = USB_EP4_PACKET_SIZE;
-	*(pRam+5) = USB_EP5_PACKET_SIZE;
+	// *(pRam+5) = USB_EP5_PACKET_SIZE;
 	// *(pRam+6) = USB_EP6_PACKET_SIZE;
 
     /* Enable the USB Interrupt */

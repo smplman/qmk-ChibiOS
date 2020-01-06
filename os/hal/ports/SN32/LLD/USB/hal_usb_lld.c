@@ -138,8 +138,8 @@ static uint32_t usb_pm_alloc(USBDriver *usbp, size_t size) {
  */
 static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
     size_t                  i, n;
-    sn32_usb_descriptor_t *udp  = USB_GET_DESCRIPTOR(ep);
-    sn32_usb_pma_t *       pmap = USB_ADDR2PTR(udp->RXADDR0);
+    sn32_usb_descriptor_t   *udp  = USB_GET_DESCRIPTOR(ep);
+    sn32_usb_pma_t *        pmap =  USB_ADDR2PTR(udp->RXADDR0);
 
     n = (size_t)udp->RXCOUNT0 & RXCOUNT_COUNT_MASK;
 
@@ -262,6 +262,117 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
 /*===========================================================================*/
 /* Driver interrupt handlers and threads.                                    */
 /*===========================================================================*/
+// static void serve_endpoint_irq(USBDriver *usbp,
+//                                uint32_t endpoint_mask,
+//                                uint32_t epstatus)
+// {
+//   for (int hwEp = 0; hwEp < USB_MAX_ENDPOINTS; hwEp++) {
+//     if (endpoint_mask  & (1 << hwEp)) {
+//       uint32_t bus_status = ((epstatus >> (hwEp*(USBD_EPSTS_EPSTS1_Pos - USBD_EPSTS_EPSTS0_Pos))) & USBD_EPSTS_EPSTS0_Msk) >> USBD_EPSTS_EPSTS0_Pos;
+//       usbep_t ep = (USBD->EP[hwEp].CFG & USBD_CFG_EP_NUM_Msk) >> USBD_CFG_EP_NUM_Pos;
+
+//       switch (bus_status) {
+//       case 0: /* In ACK */
+//         {
+//           USBInEndpointState *iesp = usbp->epc[ep]->in_state;
+//           iesp->txcnt += USBD->EP[hwEp].MXPLD;
+//           if (iesp->txcnt >= iesp->txsize) {
+//             _usb_isr_invoke_in_cb(usbp, ep);
+//           }
+//           else {
+//             uint32_t txcnt;
+//             if ((iesp->txcnt + usbp->epc[ep]->in_maxsize) > iesp->txsize) {
+//               txcnt = iesp->txsize - iesp->txcnt;
+//             }
+//             else {
+//               txcnt = usbp->epc[ep]->in_maxsize;
+//             }
+//             for (uint32_t n = 0; n < txcnt; n++) {
+//               usbd_sram[(USBD->EP[hwEp].BUFSEG) + n] = iesp->txbuf[iesp->txcnt + n];
+//             }
+//             _toggle_dsq(hwEp, &(iesp->dsq));
+//             USBD->EP[hwEp].MXPLD = txcnt;
+//           }
+//         }
+//         break;
+//       case 0x1: /* In NAK */
+//         break;
+//       case 0x2: /* Out Packet Data 0 ACK */
+//       case 0x6: /* Out Packet Data 1 ACK */
+//         {
+//           USBOutEndpointState *oesp = usbp->epc[ep]->out_state;
+//           for (uint32_t n = 0; n < USBD->EP[hwEp].MXPLD; n++) {
+//             oesp->rxbuf[oesp->rxcnt] = usbd_sram[USBD->EP[hwEp].BUFSEG + n];
+//             oesp->rxcnt++;
+//           }
+//           if (oesp->rxcnt == oesp->rxsize) {
+//             _usb_isr_invoke_out_cb(usbp, ep);
+//           }
+//           else {
+//             _toggle_dsq(hwEp, &(oesp->dsq));
+//             if ((oesp->rxcnt + usbp->epc[ep]->out_maxsize) > oesp->rxsize) {
+//               USBD->EP[hwEp].MXPLD = oesp->rxsize - oesp->rxcnt;
+//             }
+//             else {
+//               USBD->EP[hwEp].MXPLD = usbp->epc[ep]->out_maxsize;
+//             }
+//           }
+//         }
+//         break;
+//       case 0x3: /* Setup ACK */
+//         break;
+//       case 0x7: /* Isochronous transfer end */
+//       default:
+//           osalDbgAssert(FALSE, "not supported");
+//       }
+//     }
+//   }
+// }
+
+// static void serve_usb_irq(USBDriver *usbp) {
+//   uint32_t iwIntFlag = SN_USB->INSTS;
+//   uint32_t epsts     = SN_USB->EP0CTL;
+
+
+//   if (iwIntFlag & (mskBUS_RESET|mskBUS_SUSPEND|mskBUS_WAKEUP)) {
+//     if (iwIntFlag & mskBUS_RESET) {
+//       _usb_reset(usbp);
+//     }
+//     if (iwIntFlag & mskBUS_SUSPEND) {
+//       if (usbp->state == USB_ACTIVE) {
+//         _usb_suspend(usbp);
+//       }
+//     }
+//     if (iwIntFlag & mskBUS_WAKEUP) {
+//       (usbp)->receiving = 0;
+//       (usbp)->transmitting = 0;
+//       _usb_wakeup(usbp);
+//     }
+//   }
+
+//   if (iwIntFlag & (mskEP6_ACK|mskEP5_ACK|mskEP4_ACK|mskEP3_ACK|mskEP2_ACK|mskEP1_ACK)) {
+//     /* check endpoints first */
+//     // serve_endpoint_irq(usbp, (iwIntFlag & USBD_INTSTS_EPEVT_Msk) >> USBD_INTSTS_EPEVT_Pos, epsts);
+//     SN_USB->INSTS = iwIntFlag & USBD_INTSTS_EPEVT_Msk;
+//     /* then handle setup packets */
+//     if (iwIntFlag & mskEP0_SETUP) {
+//       SN_USB->INSTS |= mskEP0_SETUP;
+//       USBInEndpointState *iesp = usbp->epc[0]->in_state;
+//       iesp->dsq = 0;
+//       _usb_isr_invoke_setup_cb(usbp, 0);
+//     }
+//   }
+//   if (iwIntFlag & mskBUS_WAKEUP) {
+//     // USBD->INTSTS |= USBD_INTSTS_WAKEUP_STS_Msk;
+//     // SN_USB->INSTS |= mskBUS_WAKEUP;
+//     __USB_CLRINSTS(mskBUS_WAKEUP);
+
+//     // USBD->ATTR |= USBD_ATTR_PHY_EN_Msk;
+//     // SN_USB->CFG |= mskPHY_EN;
+//     SN_USB->CFG |= (mskESD_EN|mskPHY_EN);
+
+//   }
+// }
 
 OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
     uint32_t   iwIntFlag;
@@ -271,87 +382,66 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
 
     iwIntFlag = SN_USB->INSTS; /* Get Interrupt Status and clear immediately. */
 
-    // if (iwIntFlag & mskBUS_WAKEUP) { /* Wakeup */
-    //     _usb_wakeup(usbp);
-    // }
-    // if ((iwIntFlag & mskUSB_SOF) & (SN_USB->INTEN & mskUSB_SOF_IE)) { /* SOF */
-    //     _usb_isr_invoke_sof_cb(usbp);
-    // }
-    // if (iwIntFlag & mskBUS_RESET) { /* BusReset */
-    //     // _usb_reset(usbp);
-    // }
-    // if (iwIntFlag & mskBUS_SUSPEND) { /* Suspend */
-    //     // _usb_suspend(usbp);
-    // }
-    // if ((iwIntFlag & mskBUS_RESUME)) { /* Resume */
-    //     // _usb_wakeup(usbp);
-    //     __USB_CLRINSTS(mskBUS_RESUME);
-    // }
-
-    // if (iwIntFlag & (mskEP0_SETUP | mskEP0_IN | mskEP0_OUT | mskEP0_IN_STALL | mskEP0_OUT_STALL)) { /* Device Status Interrupt (SETUP, IN, OUT) */
-    //     usb_serve_endpoints(usbp, 0);
-    // }
-    // if (iwIntFlag & (mskEP1_ACK | mskEP1_NAK)) { /* EP1 ACK / NAK */
-    //     usb_serve_endpoints(usbp, 1);
-    // }
-    // if (iwIntFlag & (mskEP2_ACK | mskEP2_NAK)) { /* EP2 ACK / NAK */
-    //     usb_serve_endpoints(usbp, 2);
-    // }
-    // if (iwIntFlag & (mskEP3_ACK | mskEP3_NAK)) { /* EP3 ACK / NAK */
-    //     usb_serve_endpoints(usbp, 3);
-    // }
-    // if (iwIntFlag & (mskEP4_ACK | mskEP4_NAK)) { /* EP4 ACK / NAK */
-    //     usb_serve_endpoints(usbp, 4);
-    // }
-
-
-
-
-
-	if (iwIntFlag & mskBUS_WAKEUP)
-	{									/* Wakeup */
-        usb_lld_start(usbp);
-    	SN_USB->CFG |= (mskESD_EN|mskPHY_EN);	// enable ESD_EN & PHY_EN
-	    __USB_CLRINSTS(mskBUS_WAKEUP);					// Clear BUS_WAKEUP
+	if (iwIntFlag & mskBUS_WAKEUP) /* Wakeup */
+	{
+	    __USB_CLRINSTS(mskBUS_WAKEUP);		    // Clear BUS_WAKEUP
+        SN_USB->CFG |= (mskESD_EN|mskPHY_EN);	// enable ESD_EN & PHY_EN
+        (usbp)->receiving = 0;
+        (usbp)->transmitting = 0;
 		_usb_wakeup(usbp);
+        __asm__ __volatile__("bkpt");
 	}
-	if ((iwIntFlag & mskUSB_SOF) & (SN_USB->INTEN & mskUSB_SOF_IE))
-	{									/* SOF */
-		_usb_isr_invoke_sof_cb(usbp);
+
+	if ((iwIntFlag & mskUSB_SOF) & (SN_USB->INTEN & mskUSB_SOF_IE)) /* SOF */
+	{
         __USB_CLRINSTS(mskUSB_SOF);
+		_usb_isr_invoke_sof_cb(usbp);
+        __asm__ __volatile__("bkpt");
 	}
+
 	/* Device Status Interrupt (BusReset, Suspend, Resume) */
 	if (iwIntFlag & (mskBUS_RESET|mskBUS_SUSPEND|mskBUS_RESUME))
 	{
-		if (iwIntFlag & mskBUS_RESET)
-		{									/* BusReset */
-            uint32_t	wLoop;
-            __USB_CLRINSTS(0xFFFFFFFF);		// Clear all USB Event status
-            // sUSB_EumeData.wUSB_Status = mskBUSRESET;	// Set BusReset = 1
-            __USB_SETADDRESS(0);					// Set USB address = 0
-            USB_EPnStall(USB_EP0);			// Set EP0 enable & INOUTSTALL
+		if (iwIntFlag & mskBUS_RESET) /* BusReset */
+		{
+            //  __asm__ __volatile__("bkpt");
+            // uint32_t	wLoop;
+            // __USB_CLRINSTS(0x00000000);		// Clear all USB Event status
+            // SN_USB->INSTSC = 0xFFFFFFFF;
+            // // sUSB_EumeData.wUSB_Status = mskBUSRESET;	// Set BusReset = 1
+            // __USB_SETADDRESS(0);					// Set USB address = 0
+            // USB_EPnStall(USB_EP0);			// Set EP0 enable & INOUTSTALL
 
-            for (wLoop=USB_EP1; wLoop<=USB_EP6; wLoop++)
-                USB_EPnDisable(wLoop);		// Set EP1~EP6 disable & NAK
+            // for (wLoop=USB_EP1; wLoop<=USB_EP4; wLoop++)
+            //     USB_EPnDisable(wLoop);		// Set EP1~EP6 disable & NAK
+
 			_usb_reset(usbp);
+            // usb_lld_reset(usbp);
 		}
-		else if (iwIntFlag & mskBUS_SUSPEND)
-		{									/* Suspend */
-            // sUSB_EumeData.wUSB_Status |= mskBUSSUSPEND;					// Set BusSuspend = 1
-			_usb_suspend(usbp);
+		else if (iwIntFlag & mskBUS_SUSPEND) /* Suspend */
+		{
+            if (usbp->state == USB_ACTIVE) {
+                __USB_CLRINSTS(mskBUS_SUSPEND);
+                _usb_suspend(usbp);
+                 __asm__ __volatile__("bkpt");
+            }
 		}
-		else if	( (iwIntFlag & mskBUS_RESUME))
-		{									/* Resume */
+		else if	( (iwIntFlag & mskBUS_RESUME)) /* Resume */
+		{
 			__USB_CLRINSTS(mskBUS_RESUME);
+            _usb_wakeup(usbp);
+             __asm__ __volatile__("bkpt");
 		}
 	}
-	else if (iwIntFlag & (mskEP0_SETUP|mskEP0_IN|mskEP0_OUT|mskEP0_IN_STALL|mskEP0_OUT_STALL))
-	{									/* Device Status Interrupt (SETUP, IN, OUT) */
-		if (iwIntFlag &  mskEP0_SETUP)
-		{									/* SETUP */
+	if (iwIntFlag & (mskEP0_SETUP|mskEP0_IN|mskEP0_OUT|mskEP0_IN_STALL|mskEP0_OUT_STALL)) /* Device Status Interrupt (SETUP, IN, OUT) */
+	{
+        __asm__ __volatile__("bkpt");
+		if (iwIntFlag & mskEP0_SETUP) /* SETUP */
+		{
 			usb_serve_endpoints(usbp, 0);
+            // USB_EP0SetupEvent();
 		}
-		else if (iwIntFlag &  mskEP0_IN)
+		else if (iwIntFlag & mskEP0_IN)
 		{									/* IN */
 			usb_serve_endpoints(usbp, 0);
 		}
@@ -365,8 +455,9 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
 			usb_serve_endpoints(usbp, 0);
 		}
 	}
-	else if (iwIntFlag & (mskEP6_ACK|mskEP5_ACK|mskEP4_ACK|mskEP3_ACK|mskEP2_ACK|mskEP1_ACK))
+	if (iwIntFlag & (mskEP4_ACK|mskEP3_ACK|mskEP2_ACK|mskEP1_ACK))
 	{
+        __asm__ __volatile__("bkpt");
 		if (iwIntFlag & mskEP1_ACK)
 		{									/* EP1 ACK */
 			usb_serve_endpoints(usbp, 1);
@@ -382,14 +473,6 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
 		if (iwIntFlag & mskEP4_ACK)
 		{									/* EP4 ACK */
 			usb_serve_endpoints(usbp, 4);
-		}
-		if (iwIntFlag & mskEP5_ACK)
-		{									/* EP5 ACK */
-			usb_serve_endpoints(usbp, 5);
-		}
-		if (iwIntFlag & mskEP6_ACK)
-		{									/* EP6 ACK */
-			usb_serve_endpoints(usbp, 6);
 		}
 	}
 
@@ -419,21 +502,29 @@ void usb_lld_init(void) {
  */
 void usb_lld_start(USBDriver *usbp) {
     uint32_t wTmp, i;
+    // uint32_t wTmp;
 
     if (usbp->state == USB_STOP) {
         /* Enables the peripheral.*/
     #if PLATFORM_USB_USE_USB1 == TRUE
         if (&USBD1 == usbp) {
-            SN_SYS1->AHBCLKEN |= (0x1 << 4);          // Enable USBCLKEN
-            SN_USB->CFG |= (mskESD_EN | mskPHY_EN);   // Enable ESD_EN & PHY_EN
-            SN_USB->INTEN = (mskBUS_IE | mskUSB_IE);  // Enable the USB Interrupt
-            SN_USB->SGCTL = mskBUS_J_STATE;           // BUS_DRVEN = 0, BUS_DP = 1, BUS_DN = 0
+            SN_FLASH->LPCTRL = 0x5AFA0000;		        //Disable Slow mode power saving
+
+            SN_SYS0->ANBCTRL |= USB_IHRC_EN;			//enable IHRC
+            while ((SN_SYS0->CSST & 0x01) != 0x01);		//check IHRC ready
+            SN_SYS0->CLKCFG = 0x00;						//switch IHRC
+            while ((SN_SYS0->CLKCFG & 0x70) != 0x00);
+
+            SN_SYS1->AHBCLKEN |= (0x1 << 4);           // Enable USBCLKEN
+            SN_USB->CFG |= (mskESD_EN | mskPHY_EN);    // Enable ESD_EN & PHY_EN
+            SN_USB->INTEN = (mskBUS_IE | mskUSB_IE | mskUSB_BUSWK_IE | mskUSB_SOF_IE);  // Enable the USB Interrupt
+            SN_USB->SGCTL = mskBUS_J_STATE;            // BUS_DRVEN = 0, BUS_DP = 1, BUS_DN = 0
 
             // VREG33_EN = 1, PHY_EN = 1, DPPU_EN = 1, SIE_EN = 1, ESD_EN = 1, FLTDET_PUEN = 1
             wTmp = (mskVREG33_EN | mskPHY_EN | mskDPPU_EN | mskSIE_EN | mskESD_EN | mskFLTDET_PUEN_DISABLE);
             SN_USB->CFG = wTmp;
-            for (i = 0; i < DISCHARE_DELAY; i++)
-                ;
+            for (i = 0; i < DISCHARE_DELAY; i++);
+            // chThdSleepMilliseconds(50);
             SN_USB->CFG    = (wTmp & (~mskVREG33DIS_EN)) | mskDPPU_EN;
             SN_USB->PHYPRM = (0x01U << 31);
 
@@ -453,6 +544,7 @@ void usb_lld_start(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_stop(USBDriver *usbp) {
+__asm__ __volatile__("bkpt");
   if (usbp->state == USB_READY) {
     /* Resets the peripheral.*/
 
@@ -474,17 +566,28 @@ void usb_lld_stop(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_reset(USBDriver *usbp) {
+    // // __asm__ __volatile__("bkpt");
+    // /* Post reset initialization.*/
+    // SN_USB->INSTSC = 0xFFFFFFFF;  // Clear all USB Event status
+    // SN_USB->ADDR = 0;             // Set USB address = 0
 
-    /* Post reset initialization.*/
-    SN_USB->INSTSC = 0xFFFFFFFF;  // Clear all USB Event status
-    SN_USB->ADDR = 0;             // Set USB address = 0
+    // /* Resets the packet memory allocator.*/
+    // usb_pm_reset(usbp);
 
-    /* Resets the packet memory allocator.*/
-    usb_pm_reset(usbp);
-
-    /* EP0 initialization.*/
+    // /* EP0 initialization.*/
+    // usbp->epc[0] = &ep0config;
+    // usb_lld_init_endpoint(usbp, 0);
+  /* Post reset initialization.*/
+  /* EP0 initialization.*/
     usbp->epc[0] = &ep0config;
+    /* NUC123 has 512b SRAM for EP-buffers; the first 8b are reserved for setup packets */
+    // usbp->bufnext = 0;
+    // usbp->ep0next = 0;
+
     usb_lld_init_endpoint(usbp, 0);
+    // usbConnectBus(usbp);
+    // USBD->FADDR = 0;
+    SN_USB->ADDR = 0;
 }
 
 /**
@@ -498,6 +601,14 @@ void usb_lld_set_address(USBDriver *usbp) {
     SN_USB->ADDR = (uint32_t)(usbp->address);
 }
 
+// uint32_t usb_alloc_buf(USBDriver *usbp, size_t size) {
+//   uint32_t buf;
+//   buf = usbp->bufnext;
+//   usbp->bufnext += size;
+//   osalDbgAssert(usbp->bufnext <= 512, "usb buffer space full");
+//   return buf;
+// }
+
 /**
  * @brief   Enables an endpoint.
  *
@@ -507,63 +618,106 @@ void usb_lld_set_address(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
-    uint16_t                 epr;
-    sn32_usb_descriptor_t * dp;
+    // uint16_t                epr;
+    // sn32_usb_descriptor_t   *dp;
     const USBEndpointConfig *epcp = usbp->epc[ep];
+    uint8_t hwep;
+
+    if (epcp->in_state != NULL) {
+        hwep = usbp->epnext;
+        usbp->epnext += 1;
+        osalDbgAssert(usbp->epnext <= USB_MAX_ENDPOINTS, "No endpoints left");
+        // uint32_t address = ep * 64;
+        // USB_EPnBufferOffset(ep,address);
+        // USBD->EP[hwep].BUFSEG = usb_alloc_buf(usbp, epcp->in_maxsize);
+        SN_USB->EP1BUFOS = usb_pm_alloc(usbp, epcp->in_maxsize);
+        if (epcp->ep_mode == USB_EP_MODE_TYPE_CTRL)
+        /* 2 == in */
+        // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (2 << USBD_CFG_STATE_Pos) |  USBD_CFG_CSTALL_Msk;
+        // SN_USB->CFG =
+        else
+        // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (2 << USBD_CFG_STATE_Pos);
+        // SN_USB->CFG =
+        epcp->in_state->hwEp = hwep;
+    }
+
+    if (epcp->out_state != NULL) {
+        hwep = usbp->epnext;
+        usbp->epnext += 1;
+        osalDbgAssert(usbp->epnext <= USB_MAX_ENDPOINTS, "No endpoints left");
+
+        // USBD->EP[hwep].BUFSEG = usb_alloc_buf(usbp, epcp->out_maxsize);
+        SN_USB->EP1BUFOS = usb_pm_alloc(usbp, epcp->in_maxsize);
+        if (epcp->ep_mode == USB_EP_MODE_TYPE_CTRL)
+        /* 1 == Out */
+        // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (1 << USBD_CFG_STATE_Pos) | USBD_CFG_CSTALL_Msk;
+        // SN_USB->CFG =
+        else
+        // USBD->EP[hwep].CFG = (ep << USBD_CFG_EP_NUM_Pos) | (1 << USBD_CFG_STATE_Pos);
+        // SN_USB->CFG =
+        epcp->out_state->hwEp = hwep;
+    }
+
+
+    // __asm__ __volatile__("bkpt");
 
     /* Setting the endpoint type. Note that isochronous endpoints cannot be
        bidirectional because it uses double buffering and both transmit and
        receive descriptor fields are used for either direction.*/
-    switch (epcp->ep_mode & USB_EP_MODE_TYPE) {
-        // case USB_EP_MODE_TYPE_ISOC:
-        //     osalDbgAssert(false, "isochronous support disabled");
-        //     /* Falls through.*/
-        case USB_EP_MODE_TYPE_BULK:
-            epr = EPR_EP_TYPE_BULK;
-            break;
-        case USB_EP_MODE_TYPE_INTR:
-            epr = EPR_EP_TYPE_INTERRUPT;
-            break;
-        default:
-            epr = EPR_EP_TYPE_CONTROL;
-    }
+    // switch (epcp->ep_mode & USB_ENDPOINT_TYPE_MASK) {
+    //     // case USB_ISOCHRONOUS_MODE:
+    //     //     osalDbgAssert(false, "isochronous support disabled");
+    //     //     /* Falls through.*/
+    //     case USB_BULK_MODE:
+    //         epr = EPR_EP_TYPE_BULK;
+    //         break;
+    //     case USB_INTERRUPT_MODE:
+    //         epr = EPR_EP_TYPE_INTERRUPT;
+    //         break;
+    //     default:
+    //         epr = EPR_EP_TYPE_CONTROL;
+    // }
 
-    dp = USB_GET_DESCRIPTOR(ep);
+    // dp = USB_GET_DESCRIPTOR(ep);
 
-    /* IN endpoint handling.*/
-    if (epcp->in_state != NULL) {
-        dp->TXCOUNT0 = 0;
-        dp->TXADDR0  = usb_pm_alloc(usbp, epcp->in_maxsize);
+    // /* IN endpoint handling.*/
+    // if (epcp->in_state != NULL) {
+    //     dp->TXCOUNT0 = 0;
+    //     dp->TXADDR0  = usb_pm_alloc(usbp, epcp->in_maxsize);
 
-        epr |= EPR_STAT_TX_NAK;
-    }
+    //     // epr |= EPR_STAT_TX_NAK;
+    //     USB_EPnNak(ep);
+    // }
 
     /* OUT endpoint handling.*/
-    if (epcp->out_state != NULL) {
-        uint16_t nblocks;
+    // if (epcp->out_state != NULL) {
+    //     uint16_t nblocks;
 
-        /* Endpoint size and address initialization.*/
-        if (epcp->out_maxsize > 62)
-            nblocks = (((((epcp->out_maxsize - 1) | 0x1f) + 1) / 32) << 10) | 0x8000;
-        else
-            nblocks = ((((epcp->out_maxsize - 1) | 1) + 1) / 2) << 10;
-        dp->RXCOUNT0 = nblocks;
-        dp->RXADDR0  = usb_pm_alloc(usbp, epcp->out_maxsize);
-        epr |= EPR_STAT_RX_NAK;
-    }
+    //     /* Endpoint size and address initialization.*/
+    //     if (epcp->out_maxsize > 62)
+    //         nblocks = (((((epcp->out_maxsize - 1) | 0x1f) + 1) / 32) << 10) | 0x8000;
+    //     else
+    //         nblocks = ((((epcp->out_maxsize - 1) | 1) + 1) / 2) << 10;
+    //     dp->RXCOUNT0 = nblocks;
+    //     dp->RXADDR0  = usb_pm_alloc(usbp, epcp->out_maxsize);
+    //     // epr |= EPR_STAT_RX_NAK;
+    //     USB_EPnNak(ep);
+    // }
 
-    /* Resetting the data toggling bits for this endpoint.*/
-    if (SN32_USB->EPR[ep] & EPR_DTOG_RX) {
-        epr |= EPR_DTOG_RX;
-    }
+    // /* Resetting the data toggling bits for this endpoint.*/
+    // if (SN32_USB->EPR[ep] & EPR_DTOG_RX) {
+    //     epr |= EPR_DTOG_RX;
+    // }
 
-    if (SN32_USB->EPR[ep] & EPR_DTOG_TX) {
-        epr |= EPR_DTOG_TX;
-    }
+    // if (SN32_USB->EPR[ep] & EPR_DTOG_TX) {
+    //     epr |= EPR_DTOG_TX;
+    // }
+
+    // USB_ClrEPnToggle(ep);
 
     /* EPxR register setup.*/
-    EPR_SET(ep, epr | ep);
-    EPR_TOGGLE(ep, epr);
+    // EPR_SET(ep, epr | ep);
+    // EPR_TOGGLE(ep, epr);
 }
 
 /**
@@ -581,8 +735,9 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
 
     /* Disabling all endpoints.*/
     for (i = 1; i <= USB_ENDOPOINTS_NUMBER; i++) {
-        EPR_TOGGLE(i, 0);
-        EPR_SET(i, 0);
+        // EPR_TOGGLE(i, 0);
+        USB_ClrEPnToggle(i);
+        // EPR_SET(i, 0);
     }
 }
 
