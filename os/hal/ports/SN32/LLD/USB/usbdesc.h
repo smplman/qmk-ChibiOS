@@ -14,9 +14,9 @@
 * Description	: USB_LIBRARY_TYPE SELECTION
 *****************************************************************************/
 #define USB_KB_MOUSE_TYPE1				1	// KB+Mouse(EP1 Standard + EP2 Mouse + EP3 hot key)
-#define USB_MOUSE_TYPE					2	// Mouse(EP1)
+#define USB_MOUSE_TYPE						2	// Mouse(EP1)
 #define USB_KB_MOUSE_TYPE2				3	// KB+Mouse(EP1 Standard + EP2 Mouse/Consumer page)
-#define USB_LIBRARY_TYPE				USB_KB_MOUSE_TYPE1
+#define USB_LIBRARY_TYPE				USB_KB_MOUSE_TYPE2
 
 /*****************************************************************************
 * Description	: USB_VID
@@ -27,18 +27,67 @@
 * Description	: USB_PID
 *****************************************************************************/
 #if (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE1)
-	#define	USB_PID	0x7901
+	#define	USB_PID	0x7043
 #elif (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
-	#define	USB_PID	0x7902
+	#define	USB_PID	0x7041
 #elif (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE2)
-	#define	USB_PID	0x7903
+	#define	USB_PID	0x7044
 #endif
 
 /*****************************************************************************
 * Description	: USB_REV
 *****************************************************************************/
-#define	USB_REV	0x0105
+#define	USB_REV	0x0104
 
+/*****************************************************************************
+* Description	: USB EPn Buffer Offset Register
+*****************************************************************************/
+#define	EP1_BUFFER_OFFSET_VALUE	0x40
+#define	EP2_BUFFER_OFFSET_VALUE	0x80
+#define	EP3_BUFFER_OFFSET_VALUE	0xC0
+#define	EP4_BUFFER_OFFSET_VALUE	0xE0
+
+
+/*****************************************************************************
+* Description	: USB EPn Settings
+*****************************************************************************/
+#define USB_EP0_PACKET_SIZE 			64					// only 8, 64
+#define USB_ENDPOINT_NUM					0x7F
+#define	USB_SETREPORT_SIZE				USB_SETUP_PACKET_SIZE/4
+
+/* USB Endpoint Max Packet Size */
+#define USB_EP1_PACKET_SIZE										0x08
+#define USB_EP2_PACKET_SIZE										0x08
+#define USB_EP3_PACKET_SIZE										0x08
+#define USB_EP4_PACKET_SIZE										0x08
+
+/* EP1~EP4 Direction define */
+#define USB_EP1_DIRECTION					1					// IN = 1; OUT = 0
+#define USB_EP2_DIRECTION					1					// IN = 1; OUT = 0
+#define USB_EP3_DIRECTION					1					// IN = 1; OUT = 0
+#define USB_EP4_DIRECTION					0					// IN = 1; OUT = 0
+
+/* USB Endpoint Direction */
+#define USB_DIRECTION_OUT											0
+#define USB_DIRECTION_IN											1
+	
+/* EP1~EP6 Transfer mode define */
+#define USB_INTERRUPT_MODE				0					// INTERRUPT Transfer
+#define USB_BULK_MODE							1					// BULK Transfer
+#define USB_ISOCHRONOUS_MODE			2					// ISOCHRONOUS Transfer
+
+/* USB Protocol Value */
+#define USB_BOOT_PROTOCOL											0
+#define USB_REPORT_PROTOCOL										1
+
+#define USB_IDLE_TIME_INITIAL									0x7D	// 125*4 = 500ms
+
+/* USB Endpoint Halt Value */
+#define USB_EPn_NON_HALT											0x0
+#define USB_EPn_HALT													0x1
+
+#define	LANG_ID_H															0x09
+#define	LANG_ID_L															0X04
 
 
 
@@ -120,17 +169,18 @@
 #define HID_DESCRIPTOR_INDEX0	(USB_ConfigDescriptor+USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE+((USB_HID_DESC_SIZE + USB_ENDPOINT_DESC_SIZE+USB_INTERFACE_DESC_SIZE)*(0x00)))
 #define HID_DESCRIPTOR_INDEX1	(USB_ConfigDescriptor+USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE+((USB_HID_DESC_SIZE + USB_ENDPOINT_DESC_SIZE+USB_INTERFACE_DESC_SIZE)*(0x01)))
 #define HID_DESCRIPTOR_INDEX2	(USB_ConfigDescriptor+USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE+((USB_HID_DESC_SIZE + USB_ENDPOINT_DESC_SIZE+USB_INTERFACE_DESC_SIZE)*(0x02)))
+#define HID_DESCRIPTOR_INDEX3	(USB_ConfigDescriptor+USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE+((USB_HID_DESC_SIZE + USB_ENDPOINT_DESC_SIZE+USB_INTERFACE_DESC_SIZE)*(0x03)))
 
 typedef struct STRUCT_DESCRIPTOR_INFO{
 	uint8_t	wValue_H;
 	uint8_t	wIndex_L;
 	uint8_t	wValue_L;
 	uint16_t	wTable_length;
-	const	uint8_t	*pTable_Index;
+	const	uint8_t	*pTable_Index;	
 }STRUCT_DESCRIPTOR_INFO_A;
-extern STRUCT_DESCRIPTOR_INFO_A DesInfo[];
+extern const	STRUCT_DESCRIPTOR_INFO_A DesInfo[];
 
-#define USB_GETDESCRIPTOR_MAX 16		//by DesInfo size
+#define USB_GETDESCRIPTOR_MAX 18		//by DesInfo size
 #define USB_DES_STRING_MAX 		3		//by DesInfo size
 #define GET_DESCRIPTOR_ACK 	 	1
 #define GET_DESCRIPTOR_STALL 	0

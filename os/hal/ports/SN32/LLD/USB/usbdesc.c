@@ -4,17 +4,14 @@
  * Name:    usbdesc.c
  * Purpose: USB Custom User Module
  * Version: V1.01
- * Date:		2013/11
+ * Date:		2017/07
  *------------------------------------------------------------------------------*/
 // #include	"..\type.h"
-#include    "stdint.h"
-#include	"usb.h"
+#include    <stdint.h>
 #include	"usbdesc.h"
 #include	"usbram.h"
-
+#include	"usbuser.h"
 #include	"hid.h"
-#include	"hiduser.h"
-
 
 
 
@@ -31,12 +28,13 @@ const	uint8_t USB_DeviceDescriptor[] = {
 	USB_EP0_PACKET_SIZE,								/* bMaxPacketSize0 */
 	USB_WBVAL(USB_VID),									/* idVendor */
 	USB_WBVAL(USB_PID),									/* idProduct */
-	USB_WBVAL(USB_REV), /* 1.05 */			/* bcdDevice */
+	USB_WBVAL(USB_REV), /* 1.01 */			/* bcdDevice */
 	USB_DEVICE_STRING_MANUFACTURER,			/* iManufacturer */
 	USB_DEVICE_STRING_PRODUCT,					/* iProduct */
 	USB_DEVICE_STRING_RESERVED,					/* iSerialNumber */
 	0x01,																/* bNumConfigurations: one possible configuration*/
 };
+
 
 /*****************************************************************************
 * Description	: HID_ReportDescriptor[]
@@ -70,13 +68,13 @@ const uint8_t HID_ReportDescriptor[] = {
 	HID_Input(HID_Data|HID_Variable|HID_Relative),	// input (data, variable, relative)
 	HID_EndCollection,											// end collection
 
-	HID_UsagePage(HID_USAGE_PAGE_CONSUMER),					// usage page (consumer)
-	HID_Usage(HID_USAGE_PAGE_UNDEFINED),						// usage (consumer control)
-	HID_LogicalMin(0x80),														// logical minimum (-128)
-	HID_LogicalMax(0x7F),														// logical maximum (+127)
-	HID_ReportCount(64),															// report count (64)
-	HID_ReportSize(8),															// report size (8)
-	HID_Feature(HID_Data|HID_Variable|HID_Absolute),// feature (data, variable, absolute)
+//	HID_UsagePage(HID_USAGE_PAGE_CONSUMER),					// usage page (consumer)
+//	HID_Usage(HID_USAGE_PAGE_UNDEFINED),						// usage (consumer control)
+//	HID_LogicalMin(0x80),														// logical minimum (-128)
+//	HID_LogicalMax(0x7F),														// logical maximum (+127)
+//	HID_ReportCount(64),															// report count (64)
+//	HID_ReportSize(8),															// report size (8)
+//	HID_Feature(HID_Data|HID_Variable|HID_Absolute),// feature (data, variable, absolute)
 
 	HID_EndCollection,											// end collection
 #else
@@ -112,19 +110,18 @@ const uint8_t HID_ReportDescriptor[] = {
 	HID_UsageMaxS(HID_USAGE_KEYBOARD_APPLICATION),	// usage maximum (101)
 	HID_Input(HID_Data|HID_Array|HID_Absolute),	// input (data, array, absolute)
 
-	HID_UsagePage(HID_USAGE_PAGE_CONSUMER),					// usage page (consumer)
-	HID_Usage(HID_USAGE_PAGE_UNDEFINED),						// usage (consumer control)
-	HID_LogicalMin(0x80),														// logical minimum (-128)
-	HID_LogicalMax(0x7F),														// logical maximum (+127)
-	HID_ReportCount(64),															// report count (64)
-	HID_ReportSize(8),															// report size (8)
-	HID_Feature(HID_Data|HID_Variable|HID_Absolute),// feature (data, variable, absolute)
+//	HID_UsagePage(HID_USAGE_PAGE_CONSUMER),					// usage page (consumer)
+//	HID_Usage(HID_USAGE_PAGE_UNDEFINED),						// usage (consumer control)
+//	HID_LogicalMin(0x80),														// logical minimum (-128)
+//	HID_LogicalMax(0x7F),														// logical maximum (+127)
+//	HID_ReportCount(64),															// report count (64)
+//	HID_ReportSize(8),															// report size (8)
+//	HID_Feature(HID_Data|HID_Variable|HID_Absolute),// feature (data, variable, absolute)
 
 	HID_EndCollection,											// end collection
 #endif
 };
-// const uint16_t HID_ReportDescSize = sizeof(HID_ReportDescriptor);
-#define HID_ReportDescSize sizeof(HID_ReportDescriptor)
+const uint16_t HID_ReportDescSize = sizeof(HID_ReportDescriptor);
 
 /*****************************************************************************
 * Description	: HID_ReportDescriptor2[]
@@ -222,8 +219,7 @@ const uint8_t HID_ReportDescriptor2[] = {
 	HID_EndCollection,											// end collection
 #endif
 };
-// const uint16_t HID_ReportDescSize2 = sizeof(HID_ReportDescriptor2);
-#define HID_ReportDescSize2 sizeof(HID_ReportDescSize2)
+const uint16_t HID_ReportDescSize2 = sizeof(HID_ReportDescriptor2);
 
 /*****************************************************************************
 * Description	: HID_ReportDescriptor3[]
@@ -302,20 +298,40 @@ const uint8_t HID_ReportDescriptor3[] = {
 	HID_Input(HID_Data|HID_Variable|HID_Absolute),	// input (data, variable, absolute)
 	HID_EndCollection,											// end collection
 };
-// const uint16_t HID_ReportDescSize3 = sizeof(HID_ReportDescriptor3);
-#define HID_ReportDescSize3 sizeof(HID_ReportDescSize3)
+const uint16_t HID_ReportDescSize3 = sizeof(HID_ReportDescriptor3);
+
+/*****************************************************************************
+* Description	: HID_ReportDescriptor4[]
+*****************************************************************************/
+const uint8_t HID_ReportDescriptor4[] = {
+	HID_UsagePageVendor(0x13),
+	HID_Usage(0x01),
+	HID_Collection(HID_Application),
+	HID_LogicalMin(0),	/* value range: 0 - 0xFF */
+	HID_LogicalMaxS(0xFF),
+	HID_ReportSize(8),	/* 8 bits */
+	HID_ReportCount(64),
+	HID_Usage(0x02),
+	HID_Input(HID_Data | HID_Variable | HID_Absolute),
+	HID_Usage(0x03),
+	HID_Output(HID_Data | HID_Variable | HID_Absolute),
+	HID_UsageS(0xFF00),
+	HID_Feature(HID_Data|HID_Variable|HID_Absolute),// feature (data, variable, absolute)
+	HID_EndCollection,
+};
+const uint16_t HID_ReportDescSize4 = sizeof(HID_ReportDescriptor4);
 
 #if (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE1)
-#define nUsb_TotalLength	(USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE*3+USB_HID_DESC_SIZE*3+USB_ENDPOINT_DESC_SIZE*3)
-#define nUsb_NumInterfaces 3
+#define nUsb_TotalLength	(USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE*4+USB_HID_DESC_SIZE*4+USB_ENDPOINT_DESC_SIZE*4)
+#define nUsb_NumInterfaces 4
 
 #elif (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
-#define nUsb_TotalLength (USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE+USB_HID_DESC_SIZE+USB_ENDPOINT_DESC_SIZE)
-#define nUsb_NumInterfaces 1
-
-#elif (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE2)
 #define nUsb_TotalLength (USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE*2+USB_HID_DESC_SIZE*2+USB_ENDPOINT_DESC_SIZE*2)
 #define nUsb_NumInterfaces 2
+
+#elif (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE2)
+#define nUsb_TotalLength (USB_CONFIGUARTION_DESC_SIZE+USB_INTERFACE_DESC_SIZE*3+USB_HID_DESC_SIZE*3+USB_ENDPOINT_DESC_SIZE*3)
+#define nUsb_NumInterfaces 3
 #endif
 
 
@@ -367,12 +383,13 @@ const uint8_t USB_ConfigDescriptor[] = {
 #else
 	USB_ENDPOINT_OUT(USB_EP1),				/* bEndpointAddress */
 #endif
+
 	USB_ENDPOINT_TYPE_INTERRUPT,			/* bmAttributes */
 	USB_WBVAL(USB_EP1_PACKET_SIZE),		/* wMaxPacketSize */
 #if (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
 		0x01,          /* 1ms */					/* bInterval */
 #else
-		0x08,          /* 1ms */					/* bInterval */
+		0x08,          /* 8ms */					/* bInterval */
 #endif
 
 /*****************************************************************************
@@ -444,6 +461,41 @@ const uint8_t USB_ConfigDescriptor[] = {
 	USB_WBVAL(USB_EP3_PACKET_SIZE),		/* wMaxPacketSize */
 	0x08,          /* 1ms */					/* bInterval */
 #endif
+
+/*****************************************************************************
+* Description	: Interface 3[]
+*****************************************************************************/
+/* Interface 3, Alternate Setting 0, HID Class */
+	USB_INTERFACE_DESC_SIZE,					/* bLength */
+	USB_INTERFACE_DESCRIPTOR_TYPE,		/* bDescriptorType */
+	#if (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
+		USB_INTERFACE_1,								/* bInterfaceNumber */
+	#elif (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE2)
+		USB_INTERFACE_2,								/* bInterfaceNumber */
+	#else
+		USB_INTERFACE_3,								/* bInterfaceNumber */
+	#endif
+	0x00,															/* bAlternateSetting */
+	0x01,															/* bNumEndpoints */
+	0x03,															/* bInterfaceClass */
+	HID_SUBCLASS_NONE,								/* bInterfaceSubClass */
+	HID_PROTOCOL_NONE,								/* bInterfaceProtocol */
+	0x00,															/* iInterface */
+/* HID Class Descriptor */
+	USB_HID_DESC_SIZE,								/* bLength */
+	HID_HID_DESCRIPTOR_TYPE,					/* bDescriptorType */
+	USB_WBVAL(0x0111), /* 1.11 */			/* bcdHID */
+	0x00,															/* bCountryCode */
+	0x01,															/* bNumDescriptors */
+	HID_REPORT_DESCRIPTOR_TYPE,				/* bDescriptorType */
+	USB_WBVAL(HID_ReportDescSize4),		/* wDescriptorLength */
+/* Endpoint6, HID Interrupt In */
+	USB_ENDPOINT_DESC_SIZE,						/* bLength */
+	USB_ENDPOINT_DESCRIPTOR_TYPE,			/* bDescriptorType */
+	USB_ENDPOINT_OUT(USB_EP4),				/* bEndpointAddress */
+	USB_ENDPOINT_TYPE_INTERRUPT,			/* bmAttributes */
+	USB_WBVAL(USB_EP4_PACKET_SIZE),		/* wMaxPacketSize */
+	0x01,          /* 1ms */					/* bInterval */
 };
 
 
@@ -509,66 +561,92 @@ const uint8_t USB_SerialNumberStringDescriptor[] = {
 * Function		: STRUCT_DESCRIPTOR_INFO_A DesInfo[]
 * Description	: Array of USB Descritpor
 *****************************************************************************/
-STRUCT_DESCRIPTOR_INFO_A DesInfo[] = {
-//////
-{USB_DEVICE_DESCRIPTOR_TYPE, USB_INTERFACE_0, 0, 		//{type, interface0, StringTypes, size, descriptor_matrix}
-USB_DEVICE_DESC_SIZE, USB_DeviceDescriptor}, 				//NO.1 Device descriptor
-//////
-{USB_CONFIGURATION_DESCRIPTOR_TYPE,USB_INTERFACE_0,0,  	//{type, interface0, StringTypes, size, descriptor_matrix}
-nUsb_TotalLength, USB_ConfigDescriptor},								//NO.2 Config descriptor
-/////
-{USB_STRING_DESCRIPTOR_TYPE, USB_INTERFACE_0, USB_STRING_LANGUAGE, 			//{type, interface0, StringTypes, size, descriptor_matrix}
-sizeof(USB_LanguageStringDescriptor), USB_LanguageStringDescriptor},    //NO.3 String Lang
-/////
-{USB_STRING_DESCRIPTOR_TYPE, LANG_ID_H, USB_STRING_LANGUAGE, 											//{type, interface0, StringTypes, size, descriptor_matrix}
-sizeof(USB_LanguageStringDescriptor), USB_LanguageStringDescriptor},    //NO.4 String Lang
-/////
-{USB_STRING_DESCRIPTOR_TYPE, USB_INTERFACE_0, USB_STRING_MANUFACTURER, 				//{type, interface0, StringTypes, size, descriptor_matrix}
-sizeof(USB_ManufacturerStringDescriptor), USB_ManufacturerStringDescriptor},  //NO.5 String Manu
-/////
-{USB_STRING_DESCRIPTOR_TYPE, LANG_ID_H, USB_STRING_MANUFACTURER, 														//{type, interface0, StringTypes, size, descriptor_matrix}
-sizeof(USB_ManufacturerStringDescriptor), USB_ManufacturerStringDescriptor},  //NO.6 String Manu
-/////
-{USB_STRING_DESCRIPTOR_TYPE, USB_INTERFACE_0, USB_STRING_PRODUCT, 				//{type, interface0, StringTypes, size, descriptor_matrix}
-sizeof(USB_ProductStringDescriptor), USB_ProductStringDescriptor}, 				//NO.7	String Product
-/////
-{USB_STRING_DESCRIPTOR_TYPE, LANG_ID_H, USB_STRING_PRODUCT, 												//{type, interface0, StringTypes, size, descriptor_matrix}
-sizeof(USB_ProductStringDescriptor), USB_ProductStringDescriptor}, 				//NO.8	String Product
-/////
-{USB_ENDPOINT_DESCRIPTOR_TYPE,USB_INTERFACE_0,0,							//{type, interface0, StringTypes, size, descriptor_matrix}
-USB_ENDPOINT_DESC_SIZE,ENDPOINT_DESCRIPTOR_INDEX}, 						//NO.9 Endoption1
-/////
-{USB_ENDPOINT_DESCRIPTOR_TYPE,USB_INTERFACE_0,0,							//{type, interface0, StringTypes, size, descriptor_matrix}
-USB_ENDPOINT_DESC_SIZE,ENDPOINT_DESCRIPTOR_INDEX}, 						//NO.10 Endoption2
-/////
-{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_0, 0, 									//{type, interface0, StringTypes, size, descriptor_matrix}
-USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX0},										//NO.11 HID
-/////
-#if (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
+const STRUCT_DESCRIPTOR_INFO_A DesInfo[] = {
+//NO.1 Device descriptor
+	{USB_DEVICE_DESCRIPTOR_TYPE, USB_INTERFACE_0, 0, 		//{type, interface0, StringTypes, size,  descriptor_matrix(ex:USB_DeviceDescriptor[])}
+USB_DEVICE_DESC_SIZE, USB_DeviceDescriptor},
 
+//NO.2 Config descriptor
+{USB_CONFIGURATION_DESCRIPTOR_TYPE,USB_INTERFACE_0,0,  	//{type, interface0, StringTypes, size, descriptor_matrix}
+nUsb_TotalLength, USB_ConfigDescriptor},
+
+//NO.3 String Lang
+{USB_STRING_DESCRIPTOR_TYPE, USB_INTERFACE_0, USB_STRING_LANGUAGE, 			//{type, interface0, StringTypes, size, descriptor_matrix}
+sizeof(USB_LanguageStringDescriptor), USB_LanguageStringDescriptor},
+
+//NO.4 String Lang
+{USB_STRING_DESCRIPTOR_TYPE, LANG_ID_H, USB_STRING_LANGUAGE, 											//{type, interface0, StringTypes, size, descriptor_matrix}
+sizeof(USB_LanguageStringDescriptor), USB_LanguageStringDescriptor},
+
+//NO.5 String Manu
+{USB_STRING_DESCRIPTOR_TYPE, USB_INTERFACE_0, USB_STRING_MANUFACTURER, 				//{type, interface0, StringTypes, size, descriptor_matrix}
+sizeof(USB_ManufacturerStringDescriptor), USB_ManufacturerStringDescriptor},
+
+//NO.6 String Manu
+{USB_STRING_DESCRIPTOR_TYPE, LANG_ID_H, USB_STRING_MANUFACTURER, 							//{type, interface0, StringTypes, size, descriptor_matrix}
+sizeof(USB_ManufacturerStringDescriptor), USB_ManufacturerStringDescriptor},
+
+//NO.7	String Product
+{USB_STRING_DESCRIPTOR_TYPE, USB_INTERFACE_0, USB_STRING_PRODUCT, 				//{type, interface0, StringTypes, size, descriptor_matrix}
+sizeof(USB_ProductStringDescriptor), USB_ProductStringDescriptor},
+
+//NO.8	String Product
+{USB_STRING_DESCRIPTOR_TYPE, LANG_ID_H, USB_STRING_PRODUCT, 							//{type, interface0, StringTypes, size, descriptor_matrix}
+sizeof(USB_ProductStringDescriptor), USB_ProductStringDescriptor},
+
+//NO.9 Endoption1
+{USB_ENDPOINT_DESCRIPTOR_TYPE,USB_INTERFACE_0,0,							//{type, interface0, StringTypes, size, descriptor_matrix}
+USB_ENDPOINT_DESC_SIZE,ENDPOINT_DESCRIPTOR_INDEX},
+
+//NO.10 Endoption2
+{USB_ENDPOINT_DESCRIPTOR_TYPE,USB_INTERFACE_0,0,							//{type, interface0, StringTypes, size, descriptor_matrix}
+USB_ENDPOINT_DESC_SIZE,ENDPOINT_DESCRIPTOR_INDEX},
+
+//NO.11 HID
+{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_0, 0, 									//{type, interface0, StringTypes, size, descriptor_matrix}
+USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX0},
+
+
+//NO.12 HID
+#if (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
+{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_1, 0, 				//{type, interface1, StringTypes, size, descriptor_matrix}
+USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX1},
 #elif (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE2)
-{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_1, 0, 							//{type, interface0, StringTypes, size, descriptor_matrix}
-USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX1},								//NO.12 HID
+{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_1, 0, 				//{type, interface1, StringTypes, size, descriptor_matrix}
+USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX1},
+{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_2, 0, 				//{type, interface2, StringTypes, size, descriptor_matrix}
+USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX2},
 #else
-{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_1, 0, 				//{type, interface0, StringTypes, size, descriptor_matrix}
+{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_1, 0, 				//{type, interface1, StringTypes, size, descriptor_matrix}
 USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX1},					//NO.12 HID
 ///
-{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_2, 0, 				//{type, interface0, StringTypes, size, descriptor_matrix}
+{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_2, 0, 				//{type, interface2, StringTypes, size, descriptor_matrix}
 USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX2},					//NO.12 HID
+{HID_HID_DESCRIPTOR_TYPE,USB_INTERFACE_3, 0, 				//{type, interface3, StringTypes, size, descriptor_matrix}
+USB_HID_DESC_SIZE, HID_DESCRIPTOR_INDEX3},
 #endif
 
+//NO.13 REPORT INT0
+{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_0, 0,		//{type, interface0, StringTypes, size, descriptor_matrix}
+HID_ReportDescSize, HID_ReportDescriptor},
+
+//NO.14 REPORT INT1
 #if (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
-{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_0, 0,				//{type, interface0, StringTypes, size, descriptor_matrix}
-HID_ReportDescSize, HID_ReportDescriptor},							//NO.13 REPORT INT0
+{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_1, 0, 		//{type, interface1, StringTypes, size, descriptor_matrix}
+HID_ReportDescSize4, HID_ReportDescriptor4},
+#elif (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE2)
+{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_1, 0, 		//{type, interface1, StringTypes, size, descriptor_matrix}
+HID_ReportDescSize2, HID_ReportDescriptor2},
+{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_2, 0, 		//{type, interface2, StringTypes, size, descriptor_matrix}
+HID_ReportDescSize4, HID_ReportDescriptor4},
 #else
-{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_0, 0, 				//{type, interface0, StringTypes, size, descriptor_matrix}
-HID_ReportDescSize, HID_ReportDescriptor},							//NO.13 REPORT INT0
+{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_1, 0, 		//{type, interface1, StringTypes, size, descriptor_matrix}
+HID_ReportDescSize2, HID_ReportDescriptor2},
+{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_2, 0, 		//{type, interface2, StringTypes, size, descriptor_matrix}
+HID_ReportDescSize3, HID_ReportDescriptor3},
+{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_3, 0, 		//{type, interface3, StringTypes, size, descriptor_matrix}
+HID_ReportDescSize4, HID_ReportDescriptor4},
 #endif
-{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_1, 0, 				//{type, interface0, StringTypes, size, descriptor_matrix}
-HID_ReportDescSize2, HID_ReportDescriptor2},						//NO.13	REPORT INT1
-///
-{HID_REPORT_DESCRIPTOR_TYPE, USB_INTERFACE_2, 0, 				//{type, interface0, StringTypes, size, descriptor_matrix}
-HID_ReportDescSize3, HID_ReportDescriptor3}							//NO.14	REPORT INT2
 
 };
 

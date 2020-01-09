@@ -4,9 +4,10 @@
  * Name:    hiduser.c
  * Purpose: USB Custom User Module
  * Version: V1.01
- * Date:		2013/11
+ * Date:		2017/07
  *------------------------------------------------------------------------------*/
 #include	<SN32F240B.h>
+// #include	"..\type.h"
 #include	"hid.h"
 #include	"hiduser.h"
 #include	"hidram.h"
@@ -67,6 +68,7 @@ void USB_HIDRequest(void)
 	}
 }
 
+
 /*****************************************************************************
 * Function		: HID_GetReportEvent
 * Description	: sUSB_EumeData.bUSB_wValueH of Get report type
@@ -119,7 +121,6 @@ void	HID_GetReportEvent(void)
 		#if (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE1)
 			else if (sUSB_EumeData.bUSB_wIndexL == USB_INTERFACE_2)	// Interface 2
 			{
-				//if (sHID_Data.wUSB_HidProtocol == USB_REPORT_PROTOCOL)
 				if (sHID_Data.wHID_Protocol == USB_REPORT_PROTOCOL)
 				{
 					if (sUSB_EumeData.bUSB_wValueH == HID_REPORT_INPUT)
@@ -135,6 +136,7 @@ void	HID_GetReportEvent(void)
 	USB_EPnStall(USB_EP0);							// EP0 STALL
 }
 
+
 /*****************************************************************************
 * Function		: HID_GetIdleEvent
 * Description	: wUSB_HidIdleTimeIf0ID of device HID idle time
@@ -147,11 +149,10 @@ void	HID_GetIdleEvent(void)
 {
 	if (sUSB_EumeData.bUSB_bmRequestType == HID_REQUEST_GET)
 	{
-		//sUSB_EumeData.wUSB_Status |= mskPROTOCOL_SET_IDLE;		// Set Protocol_set_idle = 1
-		sHID_Data.wHID_Status |= mskPROTOCOL_SET_IDLE;
+		sHID_Data.wHID_Status |= mskPROTOCOL_SET_IDLE;	// Set Protocol_set_idle = 1
 		if ((sUSB_EumeData.bUSB_wIndexL | sUSB_EumeData.bUSB_wIndexL) == USB_INTERFACE_0)	// Interface 0
 		{
-			USB_SRAM_EP0_W0 = sHID_Data.wHID_IdleTimeIf0ID;
+			fnUSBINT_WriteFIFO(0x00, sHID_Data.wHID_IdleTimeIf0ID);
 			sUSB_EumeData.wUSB_Status |= mskSETUP_OUT;		// Set Setup_OUT = 1
 			USB_EPnAck(USB_EP0,1);					// EP0 ACK 1 byte
 			return;
@@ -159,6 +160,7 @@ void	HID_GetIdleEvent(void)
 	}
 	USB_EPnStall(USB_EP0);							// EP0 STALL
 }
+
 
 /*****************************************************************************
 * Function		: HID_GetProtocolEvent
@@ -184,7 +186,7 @@ void	HID_GetProtocolEvent(void)
 		if (sUSB_EumeData.bUSB_wIndexL <= USB_INTERFACE_1)	// Interface 0 ~ Interface 1
 	#endif
 		{
-			USB_SRAM_EP0_W0 = sHID_Data.wHID_Protocol;
+			fnUSBINT_WriteFIFO(0x00, sHID_Data.wHID_Protocol);
 			sUSB_EumeData.wUSB_Status |= mskSETUP_OUT;		// Set Setup_OUT = 1
 			USB_EPnAck(USB_EP0,1);					// EP0 ACK 1 byte
 			return;
@@ -192,6 +194,7 @@ void	HID_GetProtocolEvent(void)
 	}
 	USB_EPnStall(USB_EP0);							// EP0 STALL
 }
+
 
 /*****************************************************************************
 * Function		: HID_SetReportEvent
@@ -203,7 +206,13 @@ void	HID_GetProtocolEvent(void)
 *****************************************************************************/
 void	HID_SetReportEvent(void)
 {
-	if ((sUSB_EumeData.bUSB_bmRequestType == HID_REQUEST_SET) && (sUSB_EumeData.bUSB_wIndexL == 0))// Interface 0
+	#if (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE1)
+		if ((sUSB_EumeData.bUSB_bmRequestType == HID_REQUEST_SET) && ((sUSB_EumeData.bUSB_wIndexL == 0) || (sUSB_EumeData.bUSB_wIndexL == 3)))// Interface 0 & 3
+	#elif (USB_LIBRARY_TYPE == USB_MOUSE_TYPE)
+		if ((sUSB_EumeData.bUSB_bmRequestType == HID_REQUEST_SET) && (sUSB_EumeData.bUSB_wIndexL <= 1))// Interface 0 & 1
+	#elif (USB_LIBRARY_TYPE == USB_KB_MOUSE_TYPE2)
+		if ((sUSB_EumeData.bUSB_bmRequestType == HID_REQUEST_SET) && ((sUSB_EumeData.bUSB_wIndexL == 0) || (sUSB_EumeData.bUSB_wIndexL == 2)))// Interface 0 & 2
+	#endif
 	{
 		if (sUSB_EumeData.bUSB_wValueH == HID_REPORT_OUTPUT)
 		{ //TYPE = OUTPUT
@@ -218,6 +227,7 @@ void	HID_SetReportEvent(void)
 	}
 	USB_EPnStall(USB_EP0);							// EP0 STALL
 }
+
 
 /*****************************************************************************
 * Function		: HID_SetIdleEvent
@@ -246,6 +256,7 @@ void	HID_SetIdleEvent(void)
 	USB_EPnStall(USB_EP0);									// EP0 STALL
 }
 
+
 /*****************************************************************************
 * Function		: HID_SetProtocolEvent
 * Description	: sUSB_EumeData.bUSB_wValueL of HidProtocol
@@ -270,7 +281,6 @@ void	HID_SetProtocolEvent(void)
 			if (sUSB_EumeData.bUSB_wValueL == USB_BOOT_PROTOCOL)
 			{
 				// Clear Protocol_get_report & Protocol_set_idle = 0
-				//sUSB_EumeData.wUSB_Status &= ~(mskPROTOCOL_GET_REPORT | mskPROTOCOL_SET_IDLE);
 				sHID_Data.wHID_Status &= ~(mskPROTOCOL_GET_REPORT | mskPROTOCOL_SET_IDLE);
 			}
 			sHID_Data.wHID_Protocol = sUSB_EumeData.bUSB_wValueL;
@@ -298,6 +308,7 @@ void	HID_GetReportInputEvent(void)
 	USB_EPnAck(USB_EP0,8);			// EP0 ACK 8 byte
 }
 
+
 /*****************************************************************************
 * Function		: HID_GetReportInputIF1Event
 * Description	: Get report INPUT
@@ -312,6 +323,7 @@ void	HID_GetReportInputIF1Event(void)
 	sUSB_EumeData.wUSB_Status |= mskSETUP_OUT;// Set Setup_OUT = 1
 	USB_EPnAck(USB_EP0,5);			// EP0 ACK 5 byte
 }
+
 
 /*****************************************************************************
 * Function		: HID_GetReportInputIF2Event
@@ -328,6 +340,7 @@ void	HID_GetReportInputIF2Event(void)
 	USB_EPnAck(USB_EP0,5);			// EP0 ACK 5 byte
 }
 
+
 /*****************************************************************************
 * Function		: HID_GetReportOutputEvent
 * Description	: Get report OUTPUT
@@ -338,10 +351,11 @@ void	HID_GetReportInputIF2Event(void)
 *****************************************************************************/
 void	HID_GetReportOutputEvent(void)
 {
-	USB_SRAM_EP0_W0 = sHID_Data.wHID_SetRptByte[0];
+	fnUSBINT_WriteFIFO(0x00, sHID_Data.wHID_SetRptByte[0]);
 	sUSB_EumeData.wUSB_Status |= mskSETUP_OUT;// Set Setup_OUT = 1
 	USB_EPnAck(USB_EP0,1);			// EP0 ACK 1 byte
 }
+
 
 /*****************************************************************************
 * Function		: HID_GetReportFeatureEvent
@@ -356,6 +370,7 @@ void HID_GetReportFeatureEvent(void)
 {	//	Send data output to EP0 FIFO, for EP (Interrupt IN)
 		USB_EPnAck(USB_EP0,0);			// EP0 ACK 0 byte
 }
+
 
 /*****************************************************************************
 * Function		: HID_SetReportOutputEvent
@@ -373,6 +388,7 @@ void	HID_SetReportOutputEvent(void)
 	USB_EPnAck(USB_EP0,0);			// EP0 ACK 0 byte
 }
 
+
 /*****************************************************************************
 * Function		: HID_SetReportFeatureEvent
 * Description	: Set report Feature
@@ -386,6 +402,7 @@ void	HID_SetReportFeatureEvent(void)
 	sHID_Data.wHID_SetReportFeature = mskSET_REPORTFEATURE_FLAG;			//NEVER REMOVE!!
 	USB_EPnAck(USB_EP0,0);			// EP0 ACK 0 byte
 }
+
 
 /*****************************************************************************
 * Function		: USB_HidVar_Init
@@ -402,3 +419,4 @@ void USB_HidVar_Init(void)
 	sHID_Data.wHID_SetReportFeature = 0;
 	sHID_Data.wHID_Status = 0;
 }
+

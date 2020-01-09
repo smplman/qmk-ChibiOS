@@ -232,14 +232,14 @@ typedef struct {
   SN32_USB->EPR[ep] = (SN32_USB->EPR[ep] & ~EPR_CTR_TX & ~EPR_TOGGLE_MASK)\
                        | EPR_CTR_RX
 
-/**
- * @brief   Returns an endpoint descriptor pointer.
- */
-#define USB_GET_DESCRIPTOR(ep)                                              \
-  ((sn32_usb_descriptor_t *)((uint32_t)SN32_USBRAM_BASE +                 \
-                              (uint32_t)SN32_USB->BTABLE +                 \
-                              (uint32_t)(ep) *                              \
-                              sizeof(sn32_usb_descriptor_t)))
+// /**
+//  * @brief   Returns an endpoint descriptor pointer.
+//  */
+// #define USB_GET_DESCRIPTOR(ep)
+//   ((sn32_usb_descriptor_t *)((uint32_t)SN32_USBRAM_BASE +
+//                               (uint32_t)SN32_USB->BTABLE +
+//                               (uint32_t)(ep) *
+//                               sizeof(sn32_usb_descriptor_t)))
 
 /**
  * @brief   Converts from a PMA address to a physical address.

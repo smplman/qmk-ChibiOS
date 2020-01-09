@@ -4,7 +4,7 @@
  * Name:    usbram.c
  * Purpose: USB Custom User Module
  * Version: V1.01
- * Date:		2013/11
+ * Date:		2017/07
  *------------------------------------------------------------------------------*/
 #include	<SN32F240B.h>
 #include	"hidram.h"
