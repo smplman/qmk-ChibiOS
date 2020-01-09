@@ -147,7 +147,7 @@ void USB_EP0SetupEvent (void)
 		USB_SRAM_EP0_W1 = wUSBINT_ReadDataBuf;
 
 		//** save EP0 SETUP DATA to sUSB_EumeData
-		sUSB_EumeData.bUSB_bmRequestType = (USB_SRAM_EP0_W0& 0x000000FF);
+		sUSB_EumeData.bUSB_bmRequestType     = (USB_SRAM_EP0_W0& 0x000000FF);
 		sUSB_EumeData.bUSB_bRequest			 = (USB_SRAM_EP0_W0& 0x0000FF00)>>8;
 		sUSB_EumeData.bUSB_wValueL			 = (USB_SRAM_EP0_W0& 0x00FF0000)>>16;
 		sUSB_EumeData.bUSB_wValueH			 = (USB_SRAM_EP0_W0& 0xFF000000)>>24;
@@ -169,7 +169,7 @@ void USB_EP0SetupEvent (void)
 		}
 	}
 	else
-	__USB_CLRINSTS(mskERR_SETUP);						//** Clear ERR_SETUP
+	__USB_CLRINSTS(mskERR_SETUP);						    //** Clear ERR_SETUP
 	USB_EPnStall(USB_EP0);									//** EP0 SETUP token Wrong or SETUP Cmd Wrong
 }
 
@@ -565,20 +565,21 @@ void	USB_SetAddressEvent(void)
 *****************************************************************************/
 void	USB_GetDescriptorEvent(void)
 {
-		uint32_t 	unsupport, i;
+		// uint32_t 	unsupport, i;
+        uint32_t 	unsupport;
 		unsupport = GET_DESCRIPTOR_STALL;
 
-		for(i=0; i<USB_GETDESCRIPTOR_MAX; i++)
-		{
-			if( (sUSB_EumeData.bUSB_wValueH == DesInfo[i].wValue_H) && (sUSB_EumeData.bUSB_wIndexL == DesInfo[i].wIndex_L) &&
-				(sUSB_EumeData.bUSB_wValueL == DesInfo[i].wValue_L) )
-			{
-				wUSB_TableLength = DesInfo[i].wTable_length;
-				pUSB_TableIndex  = DesInfo[i].pTable_Index;
-				unsupport = GET_DESCRIPTOR_ACK;
-				break;
-			}
-		}
+		// for(i=0; i<USB_GETDESCRIPTOR_MAX; i++)
+		// {
+		// 	if( (sUSB_EumeData.bUSB_wValueH == DesInfo[i].wValue_H) && (sUSB_EumeData.bUSB_wIndexL == DesInfo[i].wIndex_L) &&
+		// 		(sUSB_EumeData.bUSB_wValueL == DesInfo[i].wValue_L) )
+		// 	{
+		// 		// wUSB_TableLength = DesInfo[i].wTable_length;
+		// 		// pUSB_TableIndex  = DesInfo[i].pTable_Index;
+		// 		unsupport = GET_DESCRIPTOR_ACK;
+		// 		break;
+		// 	}
+		// }
 		if(unsupport == GET_DESCRIPTOR_STALL)
 		{
 			USB_EPnStall(USB_EP0);						// EP0 STALL

@@ -91,7 +91,7 @@ void USB_Init	(void)
 	#endif
 
 	NVIC_ClearPendingIRQ(USB_IRQn);
-	NVIC_EnableIRQ(USB_IRQn);
+	// NVIC_EnableIRQ(USB_IRQn);
 
 	/* BUS_DRVEN = 0, BUS_DP = 1, BUS_DN = 0 */
 	SN_USB->SGCTL = mskBUS_J_STATE;

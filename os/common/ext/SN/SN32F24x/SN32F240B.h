@@ -2597,7 +2597,6 @@ typedef struct {                                /*!< (@ 0x4005C000) SN_USB Struc
       __IOM uint32_t R_STATUS   : 1;            /*!< [1..1] WRead status of USB FIFO                                           */
     } RWSTATUS2_b;
   } ;
-  __IO uint32_t SRAM;                           /*!< Offset:0x100 USB SRAM starting address                                */
 } SN_USB_Type;                                  /*!< Size = 144 (0x90)                                                         */
 
 

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2016 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
  * @addtogroup USB
  * @{
  */
+
 #include <SN32F240B.h>
 #include "hal.h"
 #include "usb.h"
@@ -28,6 +29,7 @@
 #include "usbuser.h"
 #include "usbepfunc.h"
 #include "usbram.h"
+#include "usbdesc.h"
 
 #if (HAL_USE_USB == TRUE) || defined(__DOXYGEN__)
 
@@ -52,8 +54,6 @@ USBDriver USBD1;
 /* Driver local variables and types.                                         */
 /*===========================================================================*/
 
-// uint8_t *const usbd_sram = (uint8_t *)(SN_USB_BASE + 0x100);
-
 /**
  * @brief   EP0 state.
  * @note    It is an union because IN and OUT endpoints are never used at the
@@ -71,24 +71,17 @@ static union {
 } ep0_state;
 
 /**
- * @brief   Buffer for the EP0 setup packets.
- */
-static uint8_t ep0setup_buffer[8];
-
-/**
  * @brief   EP0 initialization structure.
  */
 static const USBEndpointConfig ep0config = {
-  USB_EP_MODE_TYPE_CTRL,
+  USB_ENDPOINT_TYPE_CONTROL,
   _usb_ep0setup,
   _usb_ep0in,
   _usb_ep0out,
   0x40,
   0x40,
   &ep0_state.in,
-  &ep0_state.out,
-  1,
-  ep0setup_buffer
+  &ep0_state.out
 };
 
 /*===========================================================================*/
@@ -100,87 +93,14 @@ static const USBEndpointConfig ep0config = {
 /*===========================================================================*/
 
 /**
- * @brief   Common ISR code, serves the EP-related interrupts.
+ * @brief   OTG shared ISR.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
- * @param[in] ep        endpoint number
  *
  * @notapi
  */
-static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
-    size_t                   n;
-    uint32_t                 iwIntFlag = SN_USB->INSTS;
-    const USBEndpointConfig *epcp = usbp->epc[ep];
-
-    if (iwIntFlag & mskEP0_IN) {
-        /* IN endpoint, transmission.*/
-        USBInEndpointState *isp = epcp->in_state;
-
-        // EPR_CLEAR_CTR_TX(ep);
-        __USB_CLRINSTS((mskEP0_SETUP|mskEP0_PRESETUP|mskEP0_OUT_STALL|mskEP0_IN_STALL));
-
-        isp->txcnt += isp->txlast;
-        n = isp->txsize - isp->txcnt;
-        if (n > 0) {
-            /* Transfer not completed, there are more packets to send.*/
-            if (n > epcp->in_maxsize) n = epcp->in_maxsize;
-
-            /* Writes the packet from the defined buffer.*/
-            isp->txbuf += isp->txlast;
-            isp->txlast = n;
-            // usb_packet_write_from_buffer(ep, isp->txbuf, n);
-
-            /* Starting IN operation.*/
-            // EPR_SET_STAT_TX(ep, EPR_STAT_TX_VALID);
-        } else {
-            /* Transfer completed, invokes the callback.*/
-            _usb_isr_invoke_in_cb(usbp, ep);
-        }
-    }
-    if (iwIntFlag & mskEP0_OUT) {
-        /* OUT endpoint, receive.*/
-
-        // EPR_CLEAR_CTR_RX(ep);
-        __USB_CLRINSTS(mskEP0_IN);
-
-        if (iwIntFlag & mskEP0_SETUP) {
-            /* Setup packets handling, setup packets are handled using a
-               specific callback.*/
-            _usb_isr_invoke_setup_cb(usbp, ep);
-        } else {
-            USBOutEndpointState *osp = epcp->out_state;
-
-            /* Reads the packet into the defined buffer.*/
-            // n = usb_packet_read_to_buffer(ep, osp->rxbuf);
-            osp->rxbuf += n;
-
-            /* Transaction data updated.*/
-            osp->rxcnt += n;
-            osp->rxsize -= n;
-            osp->rxpkts -= 1;
-
-            /* The transaction is completed if the specified number of packets
-               has been received or the current packet is a short packet.*/
-            if ((n < epcp->out_maxsize) || (osp->rxpkts == 0)) {
-                /* Transfer complete, invokes the callback.*/
-                _usb_isr_invoke_out_cb(usbp, ep);
-            } else {
-                /* Transfer not complete, there are more packets to receive.*/
-                EPR_SET_STAT_RX(ep, EPR_STAT_RX_VALID);
-            }
-        }
-    }
-}
-
-/*===========================================================================*/
-/* Driver interrupt handlers and threads.                                    */
-/*===========================================================================*/
-
-OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
-    uint32_t   iwIntFlag;
-    USBDriver *usbp = &USBD1;
-
-    OSAL_IRQ_PROLOGUE();
+static void usb_lld_serve_interrupt(USBDriver *usbp) {
+	uint32_t iwIntFlag;
 
 	//** Get Interrupt Status and clear immediately.
 	iwIntFlag = SN_USB->INSTS;
@@ -201,7 +121,7 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
 		if (iwIntFlag & mskBUS_RESET)
 		{
 			/* BusReset */
-			USB_ReturntoNormal();
+			// USB_ReturntoNormal();
 			USB_ResetEvent();
             _usb_reset(usbp);
 		}
@@ -214,7 +134,7 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
 		else if(iwIntFlag & mskBUS_RESUME)
 		{
 			/* Resume */
-			USB_ReturntoNormal();
+			// USB_ReturntoNormal();
 			USB_ResumeEvent();
             _usb_wakeup(usbp);
 		}
@@ -228,16 +148,19 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
 		{
 			/* SETUP */
 			USB_EP0SetupEvent();
+            _usb_isr_invoke_setup_cb(usbp, 0);
 		}
 		else if (iwIntFlag & mskEP0_IN)
 		{
 			/* IN */
 			USB_EP0InEvent();
+            _usb_isr_invoke_in_cb(usbp, 0);
 		}
 		else if (iwIntFlag & mskEP0_OUT)
 		{
 			/* OUT */
 			USB_EP0OutEvent();
+            _usb_isr_invoke_out_cb(usbp, 0);
 		}
 		else if (iwIntFlag & (mskEP0_IN_STALL|mskEP0_OUT_STALL))
 		{
@@ -271,8 +194,60 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
 			/* EP4 ACK */
 			USB_EP4AckEvent();
 		}
+	}
 
-    OSAL_IRQ_EPILOGUE();
+	/////////////////////////////////////////////////
+	/* Device Status Interrupt (EPnNAK) 					 */
+	/////////////////////////////////////////////////
+	else if (iwIntFlag & (mskEP4_NAK|mskEP3_NAK|mskEP2_NAK|mskEP1_NAK))
+	{
+		if (iwIntFlag & mskEP1_NAK)
+		{
+			/* EP1 NAK */
+			USB_EP1NakEvent();
+		}
+		if (iwIntFlag & mskEP2_NAK)
+		{
+			/* EP2 NAK */
+			USB_EP2NakEvent();
+		}
+		if (iwIntFlag & mskEP3_NAK)
+		{
+			/* EP3 NAK */
+			USB_EP3NakEvent();
+		}
+		if (iwIntFlag & mskEP4_NAK)
+		{
+			/* EP4 NAK */
+			USB_EP4NakEvent();
+		}
+	}
+
+	/////////////////////////////////////////////////
+	/* Device Status Interrupt (SOF) 							 */
+	/////////////////////////////////////////////////
+	if ((iwIntFlag & mskUSB_SOF) && (SN_USB->INTEN & mskUSB_SOF_IE))
+	{
+		/* SOF */
+		USB_SOFEvent();
+        _usb_isr_invoke_sof_cb(usbp);
+	}
+}
+
+/*===========================================================================*/
+/* Driver interrupt handlers and threads.                                    */
+/*===========================================================================*/
+
+/**
+ * @brief   OTG1 interrupt handler.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
+
+  OSAL_IRQ_PROLOGUE();
+  usb_lld_serve_interrupt(&USBD1);
+  OSAL_IRQ_EPILOGUE();
 }
 
 /*===========================================================================*/
@@ -285,8 +260,11 @@ OSAL_IRQ_HANDLER(SN32_USB_IRQ_VECTOR) {
  * @notapi
  */
 void usb_lld_init(void) {
+
+#if PLATFORM_USB_USE_USB1 == TRUE
   /* Driver initialization.*/
   usbObjectInit(&USBD1);
+#endif
 }
 
 /**
@@ -298,17 +276,17 @@ void usb_lld_init(void) {
  */
 void usb_lld_start(USBDriver *usbp) {
 
-    if (usbp->state == USB_STOP) {
-        /* Enables the peripheral.*/
-    #if PLATFORM_USB_USE_USB1 == TRUE
-        if (&USBD1 == usbp) {
-            USB_Init();
-            nvicEnableVector(USB_IRQn, 5);
-        }
-    #endif
-        // usb_lld_reset(usbp);
+  if (usbp->state == USB_STOP) {
+    /* Enables the peripheral.*/
+#if PLATFORM_USB_USE_USB1 == TRUE
+    if (&USBD1 == usbp) {
+        USB_Init();
+        nvicEnableVector(USB_IRQn, 5);
+    }
+#endif
   }
   /* Configures the peripheral.*/
+
 }
 
 /**
@@ -319,14 +297,14 @@ void usb_lld_start(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_stop(USBDriver *usbp) {
+
   if (usbp->state == USB_READY) {
     /* Resets the peripheral.*/
 
     /* Disables the peripheral.*/
 #if PLATFORM_USB_USE_USB1 == TRUE
     if (&USBD1 == usbp) {
-        nvicDisableVector(USB_IRQn);
-        SN_SYS1->AHBCLKEN = (0x0 << 4);  // Disable USBCLKEN
+
     }
 #endif
   }
@@ -339,11 +317,13 @@ void usb_lld_stop(USBDriver *usbp) {
  *
  * @notapi
  */
-void usb_lld_reset(USBDriver *usbp) {/
+void usb_lld_reset(USBDriver *usbp) {
+
+    /* Post reset initialization.*/
+
     /* EP0 initialization.*/
     usbp->epc[0] = &ep0config;
     usb_lld_init_endpoint(usbp, 0);
-    SN_USB->ADDR = 0;
 }
 
 /**
@@ -366,7 +346,66 @@ void usb_lld_set_address(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
-    (void)usbp;
+    // const USBEndpointConfig *epcp = usbp->epc[ep];
+
+    // /* IN and OUT common parameters.*/
+    // switch (usbp->epc[ep]->ep_mode & USB_ENDPOINT_TYPE_MASK) {
+    // case USB_ENDPOINT_TYPE_CONTROL:
+    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_CTRL;
+    //     break;
+    // case USB_ENDPOINT_TYPE_ISOCHRONOUS:
+    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_ISO;
+    //     break;
+    // case USB_ENDPOINT_TYPE_BULK:
+    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_BULK;
+    //     break;
+    // case USB_ENDPOINT_TYPE_INTERRUPT:
+    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_INTR;
+    //     break;
+    // default:
+    //     return;
+    // }
+
+    // /* IN endpoint activation or deactivation.*/
+    // if (epcp->in_state != NULL) {
+    //     // USB_DIRECTION_IN
+    //     switch (ep)
+    //     {
+    //     case 1:
+    //         USB_ENDPOINT_IN(USB_EP1)
+    //         break;
+    //     case 2:
+    //         USB_ENDPOINT_IN(USB_EP2)
+    //         break;
+    //     case 3:
+    //         USB_ENDPOINT_IN(USB_EP3)
+    //         break;
+    //     case 4:
+    //         USB_ENDPOINT_IN(USB_EP4)
+    //         break;
+    //     }
+    // }
+
+    // /* OUT endpoint activation or deactivation.*/
+    // if (epcp->out_state != NULL) {
+    //     // USB_DIRECTION_OUT
+    //     switch (ep)
+    //     {
+    //     case 1:
+    //         USB_ENDPOINT_OUT(USB_EP1)
+    //         break;
+    //     case 2:
+    //         USB_ENDPOINT_OUT(USB_EP2)
+    //         break;
+    //     case 3:
+    //         USB_ENDPOINT_OUT(USB_EP3)
+    //         break;
+    //     case 4:
+    //         USB_ENDPOINT_OUT(USB_EP4)
+    //         break;
+    //     }
+    // }
+
 }
 
 /**
@@ -381,9 +420,7 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
 
     /* Disabling all endpoints.*/
     for (i = 1; i <= USB_ENDOPOINTS_NUMBER; i++) {
-        // EPR_TOGGLE(i, 0);
-        USB_ClrEPnToggle(i);
-        // EPR_SET(i, 0);
+        USB_EPnDisable(i);
     }
 }
 
@@ -450,7 +487,41 @@ usbepstatus_t usb_lld_get_status_in(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_read_setup(USBDriver *usbp, usbep_t ep, uint8_t *buf) {
-    (void)usbp;
+
+  (void)usbp;
+  (void)ep;
+  (void)buf;
+
+}
+
+/**
+ * @brief   Prepares for a receive operation.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ *
+ * @notapi
+ */
+void usb_lld_prepare_receive(USBDriver *usbp, usbep_t ep) {
+
+  (void)usbp;
+  (void)ep;
+
+}
+
+/**
+ * @brief   Prepares for a transmit operation.
+ *
+ * @param[in] usbp      pointer to the @p USBDriver object
+ * @param[in] ep        endpoint number
+ *
+ * @notapi
+ */
+void usb_lld_prepare_transmit(USBDriver *usbp, usbep_t ep) {
+
+  (void)usbp;
+  (void)ep;
+
 }
 
 /**
@@ -462,7 +533,10 @@ void usb_lld_read_setup(USBDriver *usbp, usbep_t ep, uint8_t *buf) {
  * @notapi
  */
 void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
-    (void)usbp;
+
+  (void)usbp;
+  (void)ep;
+
 }
 
 /**
@@ -474,7 +548,10 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
-    (void)usbp;
+
+  (void)usbp;
+  (void)ep;
+
 }
 
 /**
@@ -486,7 +563,10 @@ void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_stall_out(USBDriver *usbp, usbep_t ep) {
-    (void)usbp;
+
+  (void)usbp;
+  (void)ep;
+
 }
 
 /**
@@ -498,7 +578,10 @@ void usb_lld_stall_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
-    (void)usbp;
+
+  (void)usbp;
+  (void)ep;
+
 }
 
 /**
@@ -510,7 +593,10 @@ void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
-    (void)usbp;
+
+  (void)usbp;
+  (void)ep;
+
 }
 
 /**
@@ -522,7 +608,10 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
-    (void)usbp;
+
+//   usbp->otg->ie[ep].DIEPCTL &= ~DIEPCTL_STALL;
+  __USB_CLRINSTS(mskEP0_OUT);
+
 }
 
 #endif /* HAL_USE_USB == TRUE */

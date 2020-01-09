@@ -70,7 +70,7 @@
 /* USB Endpoint Direction */
 #define USB_DIRECTION_OUT											0
 #define USB_DIRECTION_IN											1
-	
+
 /* EP1~EP6 Transfer mode define */
 #define USB_INTERRUPT_MODE				0					// INTERRUPT Transfer
 #define USB_BULK_MODE							1					// BULK Transfer
@@ -150,8 +150,8 @@
 
 /* bEndpointAddress in Endpoint Descriptor */
 #define USB_ENDPOINT_DIRECTION_MASK						0x80
-#define USB_ENDPOINT_OUT(addr)								((addr) | 0x00)
-#define USB_ENDPOINT_IN(addr)									((addr) | 0x80)
+// #define USB_ENDPOINT_OUT(addr)								((addr) | 0x00)
+// #define USB_ENDPOINT_IN(addr)									((addr) | 0x80)
 
 /* USB String Descriptor Types */
 #define USB_STRING_LANGUAGE										0x00
@@ -176,7 +176,7 @@ typedef struct STRUCT_DESCRIPTOR_INFO{
 	uint8_t	wIndex_L;
 	uint8_t	wValue_L;
 	uint16_t	wTable_length;
-	const	uint8_t	*pTable_Index;	
+	const	uint8_t	*pTable_Index;
 }STRUCT_DESCRIPTOR_INFO_A;
 extern const	STRUCT_DESCRIPTOR_INFO_A DesInfo[];
 
