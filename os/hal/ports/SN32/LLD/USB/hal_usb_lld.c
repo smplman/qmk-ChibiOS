@@ -178,21 +178,25 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 		{
 			/* EP1 ACK */
 			USB_EP1AckEvent();
+            USB_EPnAck(USB_EP1,0);
 		}
 		if (iwIntFlag & mskEP2_ACK)
 		{
 			/* EP2 ACK */
 			USB_EP2AckEvent();
+            USB_EPnAck(USB_EP2,0);
 		}
 		if (iwIntFlag & mskEP3_ACK)
 		{
 			/* EP3 ACK */
 			USB_EP3AckEvent();
+            USB_EPnAck(USB_EP3,0);
 		}
 		if (iwIntFlag & mskEP4_ACK)
 		{
 			/* EP4 ACK */
 			USB_EP4AckEvent();
+            USB_EPnAck(USB_EP4,0);
 		}
 	}
 
@@ -205,21 +209,25 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 		{
 			/* EP1 NAK */
 			USB_EP1NakEvent();
+            USB_EPnNak(USB_EP1);
 		}
 		if (iwIntFlag & mskEP2_NAK)
 		{
 			/* EP2 NAK */
 			USB_EP2NakEvent();
+            USB_EPnNak(USB_EP2);
 		}
 		if (iwIntFlag & mskEP3_NAK)
 		{
 			/* EP3 NAK */
 			USB_EP3NakEvent();
+            USB_EPnNak(USB_EP3);
 		}
 		if (iwIntFlag & mskEP4_NAK)
 		{
 			/* EP4 NAK */
 			USB_EP4NakEvent();
+            USB_EPnNak(USB_EP4);
 		}
 	}
 
@@ -346,65 +354,71 @@ void usb_lld_set_address(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
-    // const USBEndpointConfig *epcp = usbp->epc[ep];
+    uint32_t 	wTmp;
+    const USBEndpointConfig *epcp = usbp->epc[ep];
 
-    // /* IN and OUT common parameters.*/
-    // switch (usbp->epc[ep]->ep_mode & USB_ENDPOINT_TYPE_MASK) {
-    // case USB_ENDPOINT_TYPE_CONTROL:
-    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_CTRL;
-    //     break;
-    // case USB_ENDPOINT_TYPE_ISOCHRONOUS:
-    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_ISO;
-    //     break;
-    // case USB_ENDPOINT_TYPE_BULK:
-    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_BULK;
-    //     break;
-    // case USB_ENDPOINT_TYPE_INTERRUPT:
-    //     // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_INTR;
-    //     break;
-    // default:
-    //     return;
-    // }
+    /* IN and OUT common parameters.*/
+    switch (epcp->ep_mode & USB_ENDPOINT_TYPE_MASK) {
+    case USB_ENDPOINT_TYPE_CONTROL:
+        // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_CTRL;
+        break;
+    case USB_ENDPOINT_TYPE_ISOCHRONOUS:
+        // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_ISO;
+        break;
+    case USB_ENDPOINT_TYPE_BULK:
+        // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_BULK;
+        break;
+    case USB_ENDPOINT_TYPE_INTERRUPT:
+        // ctl = DIEPCTL_SD0PID | DIEPCTL_USBAEP | DIEPCTL_EPTYP_INTR;
+        break;
+    default:
+        return;
+    }
 
-    // /* IN endpoint activation or deactivation.*/
-    // if (epcp->in_state != NULL) {
-    //     // USB_DIRECTION_IN
-    //     switch (ep)
-    //     {
-    //     case 1:
-    //         USB_ENDPOINT_IN(USB_EP1)
-    //         break;
-    //     case 2:
-    //         USB_ENDPOINT_IN(USB_EP2)
-    //         break;
-    //     case 3:
-    //         USB_ENDPOINT_IN(USB_EP3)
-    //         break;
-    //     case 4:
-    //         USB_ENDPOINT_IN(USB_EP4)
-    //         break;
-    //     }
-    // }
+    /* IN endpoint activation or deactivation.*/
+    if (epcp->in_state != NULL) {
+        // USB_DIRECTION_IN
+        epcp->in_state->txcnt = 0;
+        epcp->in_state->txbuf = 0;
+        switch (ep)
+        {
+        case 1:
+            wTmp |= ~mskEP1_DIR;
+            break;
+        case 2:
+            wTmp |= ~mskEP2_DIR;
+            break;
+        case 3:
+            wTmp |= ~mskEP3_DIR;
+            break;
+        case 4:
+            wTmp |= ~mskEP4_DIR;
+            break;
+        }
+    }
 
-    // /* OUT endpoint activation or deactivation.*/
-    // if (epcp->out_state != NULL) {
-    //     // USB_DIRECTION_OUT
-    //     switch (ep)
-    //     {
-    //     case 1:
-    //         USB_ENDPOINT_OUT(USB_EP1)
-    //         break;
-    //     case 2:
-    //         USB_ENDPOINT_OUT(USB_EP2)
-    //         break;
-    //     case 3:
-    //         USB_ENDPOINT_OUT(USB_EP3)
-    //         break;
-    //     case 4:
-    //         USB_ENDPOINT_OUT(USB_EP4)
-    //         break;
-    //     }
-    // }
+    /* OUT endpoint activation or deactivation.*/
+    if (epcp->out_state != NULL) {
+        // USB_DIRECTION_OUT
+        // USB_ENDPOINT_OUT(ep);
+        switch (ep)
+        {
+        case 1:
+            wTmp |= mskEP1_DIR;
+            break;
+        case 2:
+            wTmp |= mskEP2_DIR;
+            break;
+        case 3:
+            wTmp |= mskEP3_DIR;
+            break;
+        case 4:
+            wTmp |= mskEP4_DIR;
+            break;
+        }
+    }
+
+    SN_USB->CFG |= wTmp;
 
 }
 
@@ -564,8 +578,7 @@ void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_stall_out(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
-  (void)ep;
+  USB_EPnStall(ep);
 
 }
 
@@ -579,8 +592,7 @@ void usb_lld_stall_out(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
-  (void)ep;
+   USB_EPnStall(ep);
 
 }
 
