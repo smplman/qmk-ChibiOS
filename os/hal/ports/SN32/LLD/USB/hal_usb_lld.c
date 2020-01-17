@@ -107,7 +107,7 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
   uint32_t iwIntFlag = SN_USB->INSTS;
   const USBEndpointConfig *epcp = usbp->epc[ep];
 
-  if (usbCfg>>(ep-1) ~ mskEP1_DIR) {
+  if ((~usbCfg>>(ep-1)) & mskEP1_DIR) {
     /* IN endpoint, transmission.*/
     USBInEndpointState *isp = epcp->in_state;
 
@@ -124,7 +124,7 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
       isp->txbuf += isp->txlast;
       isp->txlast = n;
     //   usb_packet_write_from_buffer(ep, isp->txbuf, n);
-      fnUSBINT_WriteFIFO(isp->txbuf, n);
+    //   fnUSBINT_WriteFIFO(*isp->txbuf, n);
 
       /* Starting IN operation.*/
     //   EPR_SET_STAT_TX(ep, EPR_STAT_TX_VALID);
@@ -149,7 +149,7 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
 
       /* Reads the packet into the defined buffer.*/
     //   n = usb_packet_read_to_buffer(ep, osp->rxbuf);
-      fnUSBINT_ReadFIFO(*osp->rxbuf);
+    //   fnUSBINT_ReadFIFO(*osp->rxbuf);
       osp->rxbuf += wUSBINT_ReadDataBuf;
 
       /* Transaction data updated.*/
@@ -165,7 +165,7 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
       }
       else {
         /* Transfer not complete, there are more packets to receive.*/
-        EPR_SET_STAT_RX(ep, EPR_STAT_RX_VALID);
+        // EPR_SET_STAT_RX(ep, EPR_STAT_RX_VALID);
       }
     }
   }
@@ -447,7 +447,7 @@ void usb_lld_set_address(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
-    uint32_t 	wTmp;
+    uint32_t 	wTmp = 0;
     const USBEndpointConfig *epcp = usbp->epc[ep];
 
     /* IN and OUT common parameters.*/
