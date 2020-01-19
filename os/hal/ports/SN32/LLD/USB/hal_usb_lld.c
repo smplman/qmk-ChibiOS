@@ -102,12 +102,11 @@ static const USBEndpointConfig ep0config = {
  */
 static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
   size_t n;
-//   uint32_t epr = STM32_USB->EPR[ep];
   uint32_t usbCfg = SN_USB->CFG;
   uint32_t iwIntFlag = SN_USB->INSTS;
   const USBEndpointConfig *epcp = usbp->epc[ep];
 
-  if ((~usbCfg>>(ep-1)) & mskEP1_DIR) {
+  if (~(usbCfg>>(ep-1)) & mskEP1_DIR) {
     /* IN endpoint, transmission.*/
     USBInEndpointState *isp = epcp->in_state;
 
@@ -124,7 +123,11 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
       isp->txbuf += isp->txlast;
       isp->txlast = n;
     //   usb_packet_write_from_buffer(ep, isp->txbuf, n);
-    //   fnUSBINT_WriteFIFO(*isp->txbuf, n);
+      fnUSBINT_WriteFIFO((uint32_t)*isp->txbuf, n);
+      SN_USB->RWADDR = 0x00;//(uint32_t)*isp->txbuf;
+      SN_USB->RWDATA = (uint32_t)*isp->txbuf;
+      SN_USB->RWSTATUS = 0x01;
+      while (SN_USB->RWSTATUS &0x01);
 
       /* Starting IN operation.*/
     //   EPR_SET_STAT_TX(ep, EPR_STAT_TX_VALID);
@@ -149,7 +152,12 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep) {
 
       /* Reads the packet into the defined buffer.*/
     //   n = usb_packet_read_to_buffer(ep, osp->rxbuf);
-    //   fnUSBINT_ReadFIFO(*osp->rxbuf);
+    //   fnUSBINT_ReadFIFO((uint32_t)*osp->rxbuf);
+      SN_USB->RWADDR = (uint32_t)*osp->rxbuf;
+      SN_USB->RWSTATUS = 0x02;
+      while (SN_USB->RWSTATUS &0x02);
+      wUSBINT_ReadDataBuf = SN_USB->RWDATA;
+
       osp->rxbuf += wUSBINT_ReadDataBuf;
 
       /* Transaction data updated.*/
@@ -200,7 +208,7 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 		if (iwIntFlag & mskBUS_RESET)
 		{
 			/* BusReset */
-			// USB_ReturntoNormal();
+			USB_ReturntoNormal();
 			USB_ResetEvent();
             _usb_reset(usbp);
 		}
@@ -213,7 +221,7 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 		else if(iwIntFlag & mskBUS_RESUME)
 		{
 			/* Resume */
-			// USB_ReturntoNormal();
+			USB_ReturntoNormal();
 			USB_ResumeEvent();
             _usb_wakeup(usbp);
 		}
@@ -243,13 +251,11 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 			/* OUT */
 			// USB_EP0OutEvent();
             usb_serve_endpoints(usbp, 0);
-            // USBInEndpointState *iesp = usbp->epc[0]->out_state;
-            // _usb_isr_invoke_out_cb(usbp, 0);
 		}
 		else if (iwIntFlag & (mskEP0_IN_STALL|mskEP0_OUT_STALL))
 		{
 			/* EP0_IN_OUT_STALL */
-			SN_USB->INSTSC = (mskEP0_IN_STALL|mskEP0_OUT_STALL);
+			// SN_USB->INSTSC = (mskEP0_IN_STALL|mskEP0_OUT_STALL);
 			// USB_EPnStall(USB_EP0);
             usb_serve_endpoints(usbp, 0);
 		}
@@ -382,7 +388,7 @@ void usb_lld_start(USBDriver *usbp) {
 #if PLATFORM_USB_USE_USB1 == TRUE
     if (&USBD1 == usbp) {
         USB_Init();
-        nvicEnableVector(USB_IRQn, 5);
+        nvicEnableVector(USB_IRQn, 2);
     }
 #endif
   }
@@ -468,11 +474,14 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
         return;
     }
 
+    // dp = USB_GET_DESCRIPTOR(ep);
+
     /* IN endpoint activation or deactivation.*/
     if (epcp->in_state != NULL) {
         // USB_DIRECTION_IN
         epcp->in_state->txcnt = 0;
-        epcp->in_state->txbuf = 0;
+        epcp->in_state->txbuf = (uint8_t)&wUSB_EPnOffset[ep-1]; //(uint8_t)&wUSBINT_WriteDataBuf;
+        USB_EPnNak(ep);
         switch (ep)
         {
         case 1:
@@ -494,6 +503,9 @@ void usb_lld_init_endpoint(USBDriver *usbp, usbep_t ep) {
     if (epcp->out_state != NULL) {
         // USB_DIRECTION_OUT
         // USB_ENDPOINT_OUT(ep);
+        epcp->out_state->rxcnt = 0;
+        epcp->out_state->rxbuf = (uint8_t)&wUSB_EPnOffset[ep-1];//0; //&wUSBINT_ReadDataBuf;
+        USB_EPnNak(ep);
         switch (ep)
         {
         case 1:
@@ -545,14 +557,22 @@ void usb_lld_disable_endpoints(USBDriver *usbp) {
  */
 usbepstatus_t usb_lld_get_status_out(USBDriver *usbp, usbep_t ep) {
   (void)usbp;
-  switch (SN_USB->INSTS) {
-      case mskEP0_IN:
-          return EP_STATUS_DISABLED;
-      case mskEP0_IN_STALL:
-          return EP_STATUS_STALLED;
-      default:
-          return EP_STATUS_ACTIVE;
-  }
+   if (SN_USB->INSTS & mskEP0_OUT) {
+       return EP_STATUS_DISABLED;
+   } else if (SN_USB->INSTS & mskEP0_OUT_STALL) {
+       return EP_STATUS_STALLED;
+   } else {
+       return EP_STATUS_ACTIVE;
+   }
+   // (mskEP0_IN_STALL|mskEP0_OUT_STALL))
+//   switch (SN_USB->INSTS) {
+//       case mskEP0_IN:
+//           return EP_STATUS_DISABLED;
+//       case mskEP0_IN_STALL:
+//           return EP_STATUS_ACTIVE;
+//       default:
+//           return EP_STATUS_ACTIVE;
+//   }
 }
 
 /**
@@ -569,14 +589,22 @@ usbepstatus_t usb_lld_get_status_out(USBDriver *usbp, usbep_t ep) {
  */
 usbepstatus_t usb_lld_get_status_in(USBDriver *usbp, usbep_t ep) {
   (void)usbp;
-  switch (SN_USB->INSTS) {
-    case mskEP0_OUT:
-      return EP_STATUS_DISABLED;
-    case mskEP0_OUT_STALL:
-      return EP_STATUS_STALLED;
-    default:
-      return EP_STATUS_ACTIVE;
-  }
+   if (SN_USB->INSTS & mskEP0_IN) {
+       return EP_STATUS_DISABLED;
+   } else if (SN_USB->INSTS & mskEP0_IN_STALL) {
+       return EP_STATUS_STALLED;
+   } else {
+       return EP_STATUS_ACTIVE;
+   }
+
+//   switch (SN_USB->INSTS) {
+//     case mskEP0_OUT:
+//       return EP_STATUS_DISABLED;
+//     case mskEP0_OUT_STALL:
+//       return EP_STATUS_STALLED;
+//     default:
+//       return EP_STATUS_ACTIVE;
+//   }
 }
 
 /**
@@ -595,41 +623,51 @@ usbepstatus_t usb_lld_get_status_in(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_read_setup(USBDriver *usbp, usbep_t ep, uint8_t *buf) {
 
-  (void)usbp;
-  (void)ep;
-  (void)buf;
+  fnUSBINT_ReadFIFO((uint32_t)buf);
+
+//   stm32_usb_pma_t *pmap;
+//   stm32_usb_descriptor_t *udp;
+//   uint32_t n;
+
+//   (void)usbp;
+//   udp = USB_GET_DESCRIPTOR(ep);
+//   pmap = USB_ADDR2PTR(udp->RXADDR0);
+//   for (n = 0; n < 4; n++) {
+//     *(uint16_t *)buf = (uint16_t)*pmap++;
+//     buf += 2;
+//   }
 
 }
 
-/**
- * @brief   Prepares for a receive operation.
- *
- * @param[in] usbp      pointer to the @p USBDriver object
- * @param[in] ep        endpoint number
- *
- * @notapi
- */
-void usb_lld_prepare_receive(USBDriver *usbp, usbep_t ep) {
+// /**
+//  * @brief   Prepares for a receive operation.
+//  *
+//  * @param[in] usbp      pointer to the @p USBDriver object
+//  * @param[in] ep        endpoint number
+//  *
+//  * @notapi
+//  */
+// void usb_lld_prepare_receive(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
-  (void)ep;
+//   (void)usbp;
+//   (void)ep;
 
-}
+// }
 
-/**
- * @brief   Prepares for a transmit operation.
- *
- * @param[in] usbp      pointer to the @p USBDriver object
- * @param[in] ep        endpoint number
- *
- * @notapi
- */
-void usb_lld_prepare_transmit(USBDriver *usbp, usbep_t ep) {
+// /**
+//  * @brief   Prepares for a transmit operation.
+//  *
+//  * @param[in] usbp      pointer to the @p USBDriver object
+//  * @param[in] ep        endpoint number
+//  *
+//  * @notapi
+//  */
+// void usb_lld_prepare_transmit(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
-  (void)ep;
+//   (void)usbp;
+//   (void)ep;
 
-}
+// }
 
 /**
  * @brief   Starts a receive operation on an OUT endpoint.
@@ -641,8 +679,16 @@ void usb_lld_prepare_transmit(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
-  (void)ep;
+  USBOutEndpointState *osp = usbp->epc[ep]->out_state;
+
+  /* Transfer initialization.*/
+  if (osp->rxsize == 0)         /* Special case for zero sized packets.*/
+    osp->rxpkts = 1;
+  else
+    osp->rxpkts = (uint16_t)((osp->rxsize + usbp->epc[ep]->out_maxsize - 1) /
+                             usbp->epc[ep]->out_maxsize);
+
+//   EPR_SET_STAT_RX(ep, EPR_STAT_RX_VALID);
 
 }
 
@@ -655,9 +701,19 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
+  size_t n;
+  USBInEndpointState *isp = usbp->epc[ep]->in_state;
 
-  (void)usbp;
-  (void)ep;
+  /* Transfer initialization.*/
+  n = isp->txsize;
+  if (n > (size_t)usbp->epc[ep]->in_maxsize)
+    n = (size_t)usbp->epc[ep]->in_maxsize;
+
+  isp->txlast = n;
+//   usb_packet_write_from_buffer(ep, isp->txbuf, n);
+  fnUSBINT_WriteFIFO((uint32_t)*isp->txbuf, n);
+
+//   EPR_SET_STAT_TX(ep, EPR_STAT_TX_VALID);
 
 }
 
@@ -699,8 +755,7 @@ void usb_lld_stall_in(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
 
-  (void)usbp;
-  (void)ep;
+  __USB_CLRINSTS(mskEP0_OUT);
 
 }
 
@@ -714,8 +769,7 @@ void usb_lld_clear_out(USBDriver *usbp, usbep_t ep) {
  */
 void usb_lld_clear_in(USBDriver *usbp, usbep_t ep) {
 
-//   usbp->otg->ie[ep].DIEPCTL &= ~DIEPCTL_STALL;
-  __USB_CLRINSTS(mskEP0_OUT);
+  __USB_CLRINSTS(mskEP0_IN);
 
 }
 
