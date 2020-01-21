@@ -39,50 +39,6 @@
 typedef uint32_t                        sn32_usb_pma_t;
 
 /**
- * @brief   USB registers block.
- */
-typedef struct {
-  /**
-   * @brief   Endpoint registers.
-   */
-  volatile uint32_t             EPR[USB_ENDOPOINTS_NUMBER + 1];
-  /*
-   * @brief   Reserved space.
-   */
-  volatile uint32_t             _r20[8];
-  /*
-   * @brief   Control Register.
-   */
-  volatile uint32_t             CNTR;
-  /*
-   * @brief   Interrupt Status Register.
-   */
-  volatile uint32_t             ISTR;
-  /*
-   * @brief   Frame Number Register.
-   */
-  volatile uint32_t             FNR;
-  /*
-   * @brief   Device Address Register.
-   */
-  volatile uint32_t             DADDR;
-  /*
-   * @brief   Buffer Table Address.
-   */
-  volatile uint32_t             BTABLE;
-  /*
-   * @brief   LPM Control and Status Register.
-   */
-  volatile uint32_t             LPMCSR;
-#if SN32_USB_HAS_BCDR
-  /*
-   * @brief   Battery Charging Detector
-   */
-  volatile uint32_t             BCDR;
-#endif
-} sn32_usb_t;
-
-/**
  * @brief   USB descriptor registers block.
  */
 typedef struct {
@@ -103,15 +59,6 @@ typedef struct {
    */
   volatile sn32_usb_pma_t      RXCOUNT0;
 } sn32_usb_descriptor_t;
-
-/**
- * @name    Register aliases
- * @{
- */
-#define RXCOUNT1                TXCOUNT0
-#define TXCOUNT1                RXCOUNT0
-#define RXADDR1                 TXADDR0
-#define TXADDR1                 RXADDR0
 /** @} */
 
 /**
@@ -127,7 +74,7 @@ typedef struct {
 /**
  * @brief Pointer to the USB registers block.
  */
-#define SN32_USB               ((sn32_usb_t *)SN32_USB_BASE)
+// #define SN32_USB               ((sn32_usb_t *)SN32_USB_BASE)
 
 /**
  * @brief   Pointer to the USB RAM.
@@ -207,39 +154,13 @@ typedef struct {
 
 #define EPR_CTR_MASK            (EPR_CTR_TX | EPR_CTR_RX)
 
-#define EPR_SET(ep, epr)                                                    \
-  SN32_USB->EPR[ep] = ((epr) & ~EPR_TOGGLE_MASK) | EPR_CTR_MASK
-
-#define EPR_TOGGLE(ep, epr)                                                 \
-  SN32_USB->EPR[ep] = (SN32_USB->EPR[ep] ^ ((epr) & EPR_TOGGLE_MASK))     \
-                       | EPR_CTR_MASK
-
-#define EPR_SET_STAT_RX(ep, epr)                                            \
-  SN32_USB->EPR[ep] = ((SN32_USB->EPR[ep] &                               \
-                        ~(EPR_TOGGLE_MASK & ~EPR_STAT_RX_MASK)) ^           \
-                       (epr)) | EPR_CTR_MASK
-
-#define EPR_SET_STAT_TX(ep, epr)                                            \
-  SN32_USB->EPR[ep] = ((SN32_USB->EPR[ep] &                               \
-                        ~(EPR_TOGGLE_MASK & ~EPR_STAT_TX_MASK)) ^           \
-                       (epr)) | EPR_CTR_MASK
-
-#define EPR_CLEAR_CTR_RX(ep)                                                \
-  SN32_USB->EPR[ep] = (SN32_USB->EPR[ep] & ~EPR_CTR_RX & ~EPR_TOGGLE_MASK)\
-                       | EPR_CTR_TX
-
-#define EPR_CLEAR_CTR_TX(ep)                                                \
-  SN32_USB->EPR[ep] = (SN32_USB->EPR[ep] & ~EPR_CTR_TX & ~EPR_TOGGLE_MASK)\
-                       | EPR_CTR_RX
-
-// /**
-//  * @brief   Returns an endpoint descriptor pointer.
-//  */
-// #define USB_GET_DESCRIPTOR(ep)
-//   ((sn32_usb_descriptor_t *)((uint32_t)SN32_USBRAM_BASE +
-//                               (uint32_t)SN32_USB->BTABLE +
-//                               (uint32_t)(ep) *
-//                               sizeof(sn32_usb_descriptor_t)))
+/**
+ * @brief   Returns an endpoint descriptor pointer.
+ */
+#define USB_GET_DESCRIPTOR(ep)                                          \
+  ((sn32_usb_descriptor_t *)((uint32_t)SN32_USBRAM_BASE +               \
+                              (uint32_t)(ep) *                          \
+                              sizeof(sn32_usb_descriptor_t)))
 
 /**
  * @brief   Converts from a PMA address to a physical address.
