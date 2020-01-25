@@ -157,7 +157,7 @@ typedef struct {
 /**
  * @brief   Returns an endpoint descriptor pointer.
  */
-#define USB_GET_DESCRIPTOR(ep)                                          \
+#define USB_GET_ENDPOINT_DESCRIPTOR(ep)                                          \
   ((sn32_usb_descriptor_t *)((uint32_t)SN32_USBRAM_BASE +               \
                               (uint32_t)(ep) *                          \
                               sizeof(sn32_usb_descriptor_t)))

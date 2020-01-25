@@ -14,7 +14,7 @@
 #define USB_EP1																0x1
 #define USB_EP2																0x2
 #define USB_EP3																0x3
-#define USB_EP4																0x4	
+#define USB_EP4																0x4
 
 /* USB Interface Address */
 #define USB_INTERFACE_0												0x0
@@ -89,7 +89,7 @@
 #define USB_INTERFACE_POWER_DESCRIPTOR_TYPE				8
 #define USB_OTG_DESCRIPTOR_TYPE										9
 #define USB_DEBUG_DESCRIPTOR_TYPE									10
-#define USB_INTERFACE_ASSOCIATION_DESCRIPTOR_TYPE	11 
+#define USB_INTERFACE_ASSOCIATION_DESCRIPTOR_TYPE	11
 /* Wireless USB extension Descriptor Type. */
 #define USB_SECURITY_TYPE													12
 #define USB_KEY_TYPE															13
