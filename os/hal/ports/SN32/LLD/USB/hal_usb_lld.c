@@ -100,7 +100,7 @@ static void sn32_usb_read_fifo(usbep_t ep, uint8_t *buf, size_t sz) {
     size_t chunk;
     uint32_t data;
 
-    // if (ep == 0) {
+    if (ep == 0) {
         off = 0;
 
         while (off != sz) {
@@ -118,9 +118,9 @@ static void sn32_usb_read_fifo(usbep_t ep, uint8_t *buf, size_t sz) {
             off += chunk;
             buf += chunk;
         }
-    // } else {
-    //     __asm__ volatile ("bkpt");
-    // }
+    } else {
+        __asm__ volatile ("bkpt");
+    }
 }
 
 static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
@@ -128,7 +128,7 @@ static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
     size_t chunk;
     uint32_t data;
 
-    // if (ep == 0) {
+    if (ep == 0) {
         off = 0;
 
         while (off != sz) {
@@ -146,9 +146,25 @@ static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
             off += chunk;
             buf += chunk;
         }
-    // } else {
-    //     __asm__ volatile ("bkpt");
-    // }
+    } else {
+        off = 0;
+
+        while (off != sz) {
+            chunk = 4;
+            if (off + chunk > sz)
+                chunk = sz - off;
+
+            memcpy(&data, buf, chunk);
+
+            SN_USB->RWADDR2 = off + ep * 0x40;
+            SN_USB->RWDATA2 = data;
+            SN_USB->RWSTATUS2 = 0x01;
+            while (SN_USB->RWSTATUS2 & 0x01);
+
+            off += chunk;
+            buf += chunk;
+        }
+    }
 }
 
 /**
@@ -184,6 +200,7 @@ static void usb_packet_write_from_buffer(usbep_t ep, const uint8_t *buf, size_t 
 }
 
 /**
+<<<<<<< HEAD
  * @brief   Common ISR code, serves the EP-related interrupts.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -268,6 +285,8 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep, uint32_t iwIntFlag
 uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const void** const DescriptorAddress);
 
 /**
+=======
+>>>>>>> d2297ee167dba50205731be609d0b84416b3faa3
  * @brief   USB shared ISR.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -281,12 +300,12 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 	iwIntFlag = SN_USB->INSTS;
 	SN_USB->INSTSC = 0xFEFBFFFF;	//** Don't clear PRESETUP & ERR_SETUP flag
 
-	// if(iwIntFlag == 0)
-	// {
-	// 	//@20160902 add for EMC protection
-	// 	USB_ReturntoNormal();
-	// 	return;
-	// }
+	if(iwIntFlag == 0)
+	{
+		//@20160902 add for EMC protection
+		USB_ReturntoNormal();
+		return;
+	}
 
 	/////////////////////////////////////////////////
 	/* Device Status Interrupt (BusReset, Suspend) */
@@ -371,30 +390,26 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 		if (iwIntFlag & mskEP1_ACK)
 		{
 			/* EP1 ACK */
-			// USB_EP1AckEvent();
-            // USB_EPnAck(USB_EP1,0);
-            usb_serve_endpoints(usbp, 1, iwIntFlag);
+      __USB_CLRINSTS(mskEP1_ACK);
+      _usb_isr_invoke_in_cb(usbp, 1);
 		}
 		if (iwIntFlag & mskEP2_ACK)
 		{
 			/* EP2 ACK */
-			// USB_EP2AckEvent();
-            // USB_EPnAck(USB_EP2,0);
-            usb_serve_endpoints(usbp, 2, iwIntFlag);
+      __USB_CLRINSTS(mskEP2_ACK);
+      _usb_isr_invoke_in_cb(usbp, 2);
 		}
 		if (iwIntFlag & mskEP3_ACK)
 		{
 			/* EP3 ACK */
-			// USB_EP3AckEvent();
-            // USB_EPnAck(USB_EP3,0);
-            usb_serve_endpoints(usbp, 3, iwIntFlag);
+      __USB_CLRINSTS(mskEP3_ACK);
+      _usb_isr_invoke_in_cb(usbp, 3);
 		}
 		if (iwIntFlag & mskEP4_ACK)
 		{
 			/* EP4 ACK */
-			// USB_EP4AckEvent();
-            // USB_EPnAck(USB_EP4,0);
-            usb_serve_endpoints(usbp, 4, iwIntFlag);
+      __USB_CLRINSTS(mskEP4_ACK);
+      _usb_isr_invoke_in_cb(usbp, 4);
 		}
 	}
 
@@ -407,29 +422,29 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 		{
 			/* EP1 NAK */
 			// USB_EP1NakEvent();
-            // USB_EPnNak(USB_EP1);
-            usb_serve_endpoints(usbp, 1, iwIntFlag);
+            USB_EPnNak(USB_EP1);
+            // usb_serve_endpoints(usbp, 1, iwIntFlag);
 		}
 		if (iwIntFlag & mskEP2_NAK)
 		{
 			/* EP2 NAK */
 			// USB_EP2NakEvent();
-            // USB_EPnNak(USB_EP2);
-            usb_serve_endpoints(usbp, 2, iwIntFlag);
+            USB_EPnNak(USB_EP2);
+            // usb_serve_endpoints(usbp, 2, iwIntFlag);
 		}
 		if (iwIntFlag & mskEP3_NAK)
 		{
 			/* EP3 NAK */
 			// USB_EP3NakEvent();
-            // USB_EPnNak(USB_EP3);
-            usb_serve_endpoints(usbp, 3, iwIntFlag);
+            USB_EPnNak(USB_EP3);
+            // usb_serve_endpoints(usbp, 3, iwIntFlag);
 		}
 		if (iwIntFlag & mskEP4_NAK)
 		{
 			/* EP4 NAK */
 			// USB_EP4NakEvent();
-            // USB_EPnNak(USB_EP4);
-            usb_serve_endpoints(usbp, 4, iwIntFlag);
+            USB_EPnNak(USB_EP4);
+            // usb_serve_endpoints(usbp, 4, iwIntFlag);
 		}
 	}
 
@@ -544,9 +559,15 @@ void usb_lld_reset(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_set_address(USBDriver *usbp) {
+<<<<<<< HEAD
 //   SN_USB->ADDR = usbp->address;
   // USB_EPnAck(USB_EP0,0);
+=======
+>>>>>>> d2297ee167dba50205731be609d0b84416b3faa3
     address = usbp->address;
+
+    USB_EPnAck(USB_EP1, 0);
+    USB_EPnAck(USB_EP2, 0);
 }
 
 /**
@@ -833,8 +854,6 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
-  if (address) return;
-
   size_t n;
   USBInEndpointState *isp = usbp->epc[ep]->in_state;
 

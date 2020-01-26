@@ -56,7 +56,7 @@
 #define	USB_SETREPORT_SIZE				USB_SETUP_PACKET_SIZE/4
 
 /* USB Endpoint Max Packet Size */
-#define USB_EP1_PACKET_SIZE										0x08
+#define USB_EP1_PACKET_SIZE										0x40
 #define USB_EP2_PACKET_SIZE										0x08
 #define USB_EP3_PACKET_SIZE										0x08
 #define USB_EP4_PACKET_SIZE										0x08
