@@ -200,7 +200,6 @@ static void usb_packet_write_from_buffer(usbep_t ep, const uint8_t *buf, size_t 
 }
 
 /**
-<<<<<<< HEAD
  * @brief   Common ISR code, serves the EP-related interrupts.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -285,8 +284,6 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep, uint32_t iwIntFlag
 uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const void** const DescriptorAddress);
 
 /**
-=======
->>>>>>> d2297ee167dba50205731be609d0b84416b3faa3
  * @brief   USB shared ISR.
  *
  * @param[in] usbp      pointer to the @p USBDriver object
@@ -559,11 +556,6 @@ void usb_lld_reset(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_set_address(USBDriver *usbp) {
-<<<<<<< HEAD
-//   SN_USB->ADDR = usbp->address;
-  // USB_EPnAck(USB_EP0,0);
-=======
->>>>>>> d2297ee167dba50205731be609d0b84416b3faa3
     address = usbp->address;
 
     USB_EPnAck(USB_EP1, 0);
