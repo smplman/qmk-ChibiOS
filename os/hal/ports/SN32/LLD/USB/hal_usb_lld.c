@@ -100,7 +100,7 @@ static void sn32_usb_read_fifo(usbep_t ep, uint8_t *buf, size_t sz) {
     size_t chunk;
     uint32_t data;
 
-    if (ep == 0) {
+    // if (ep == 0) {
         off = 0;
 
         while (off != sz) {
@@ -118,9 +118,9 @@ static void sn32_usb_read_fifo(usbep_t ep, uint8_t *buf, size_t sz) {
             off += chunk;
             buf += chunk;
         }
-    } else {
-        __asm__ volatile ("bkpt");
-    }
+    // } else {
+    //     __asm__ volatile ("bkpt");
+    // }
 }
 
 static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
@@ -128,7 +128,7 @@ static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
     size_t chunk;
     uint32_t data;
 
-    if (ep == 0) {
+    // if (ep == 0) {
         off = 0;
 
         while (off != sz) {
@@ -146,9 +146,9 @@ static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
             off += chunk;
             buf += chunk;
         }
-    } else {
-        __asm__ volatile ("bkpt");
-    }
+    // } else {
+    //     __asm__ volatile ("bkpt");
+    // }
 }
 
 /**
@@ -161,28 +161,10 @@ static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
  * @notapi
  */
 static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
-    size_t i, n;
+    size_t n;
 
     n = (SN_USB->EP0CTL + ep) & mskEPn_CNT; // Endpoint byte count
-
-    i = n;
-
-    while (i >= 2) {
-
-        fnUSBINT_ReadFIFO(wUSB_EPnOffset[ep]);
-        // USB_SRAM = wUSBINT_ReadDataBuf;
-        // memcpy(buf, USB_SRAM, 4);
-
-        uint32_t w = wUSBINT_ReadDataBuf++;
-        *buf++ = (uint8_t)w;
-        *buf++ = (uint8_t)(w >> 8);
-
-        i -= 2;
-    }
-
-    if (i >= 1) {
-        *buf = (uint8_t)wUSBINT_ReadDataBuf;
-    }
+    sn32_usb_read_fifo(ep, buf, n);
 
     return n;
 }
@@ -199,7 +181,6 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
  */
 static void usb_packet_write_from_buffer(usbep_t ep, const uint8_t *buf, size_t n) {
     sn32_usb_write_fifo(ep, buf, n);
-    // USB_EPnAck(ep, n);
 }
 
 /**
@@ -263,13 +244,6 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep, uint32_t iwIntFlag
 
       /* Reads the packet into the defined buffer.*/
       n = usb_packet_read_to_buffer(ep, osp->rxbuf);
-    //   fnUSBINT_ReadFIFO((uint32_t)*osp->rxbuf);
-    //   SN_USB->RWADDR = (uint32_t)*osp->rxbuf;
-    //   SN_USB->RWADDR = 0x00;
-    //   SN_USB->RWSTATUS = 0x02;
-    //   while (SN_USB->RWSTATUS &0x02);
-    //   n = SN_USB->RWDATA;
-
       osp->rxbuf += n;
 
       /* Transaction data updated.*/
