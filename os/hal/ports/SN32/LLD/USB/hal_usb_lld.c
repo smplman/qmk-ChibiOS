@@ -335,7 +335,7 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 			/* IN */
 			// USB_EP0InEvent();
             // usb_serve_endpoints(usbp, 0, iwIntFlag);
-            USB_EPnAck(USB_EP0,0);
+            // USB_EPnAck(USB_EP0,0);
             // USBInEndpointState *iesp = usbp->epc[0]->in_state;
             // _usb_isr_invoke_in_cb(usbp, 0);
             __USB_CLRINSTS(mskEP0_IN);
