@@ -345,7 +345,7 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 	/////////////////////////////////////////////////
 	else if (iwIntFlag & (mskEP0_SETUP|mskEP0_IN|mskEP0_OUT|mskEP0_IN_STALL|mskEP0_OUT_STALL))
 	{
-        // const USBEndpointConfig *epcp = usbp->epc[0];
+        const USBEndpointConfig *epcp = usbp->epc[0];
 
 		if (iwIntFlag & mskEP0_SETUP)
 		{
@@ -353,18 +353,24 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 			// USB_EP0SetupEvent();
              __USB_CLRINSTS((mskEP0_SETUP|mskEP0_PRESETUP|mskEP0_OUT_STALL|mskEP0_IN_STALL));
             usb_serve_endpoints(usbp, 0, iwIntFlag);
-             USB_EPnAck(USB_EP0,0);
+             USB_EPnAck(USB_EP0,epcp->in_state->txsize);
             // _usb_isr_invoke_setup_cb(usbp, 0);
 		}
 		else if (iwIntFlag & mskEP0_IN)
 		{
 			/* IN */
-			USB_EP0InEvent();
-            __USB_CLRINSTS(mskEP0_IN);
-            usb_serve_endpoints(usbp, 0, iwIntFlag);
+			// USB_EP0InEvent();
+            // usb_serve_endpoints(usbp, 0, iwIntFlag);
             USB_EPnAck(USB_EP0,0);
             // USBInEndpointState *iesp = usbp->epc[0]->in_state;
             // _usb_isr_invoke_in_cb(usbp, 0);
+            __USB_CLRINSTS(mskEP0_IN);
+            if (address) {
+                SN_USB->ADDR = address;
+                address = 0;
+                USB_EPnStall(USB_EP0);
+            }
+            USB_EPnAck(USB_EP0,0);
 		}
 		else if (iwIntFlag & mskEP0_OUT)
 		{
@@ -564,9 +570,9 @@ void usb_lld_reset(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_set_address(USBDriver *usbp) {
-  SN_USB->ADDR = usbp->address;
+//   SN_USB->ADDR = usbp->address;
   // USB_EPnAck(USB_EP0,0);
-    // address = usbp->address;
+    address = usbp->address;
 }
 
 /**
