@@ -55,6 +55,8 @@ USBDriver USBD1;
 /* Driver local variables and types.                                         */
 /*===========================================================================*/
 
+static int address;
+
 /**
  * @brief   EP0 state.
  * @note    It is an union because IN and OUT endpoints are never used at the
@@ -92,6 +94,62 @@ static const USBEndpointConfig ep0config = {
 /*===========================================================================*/
 /* Driver local functions.                                                   */
 /*===========================================================================*/
+
+static void sn32_usb_read_fifo(usbep_t ep, uint8_t *buf, size_t sz) {
+    size_t off;
+    size_t chunk;
+    uint32_t data;
+
+    if (ep == 0) {
+        off = 0;
+
+        while (off != sz) {
+            chunk = 4;
+            if (off + chunk > sz)
+                chunk = sz - off;
+
+            SN_USB->RWADDR = off;
+            SN_USB->RWSTATUS = 0x02;
+            while (SN_USB->RWSTATUS & 0x02);
+
+            data = SN_USB->RWDATA;
+            memcpy(buf, &data, chunk);
+
+            off += chunk;
+            buf += chunk;
+        }
+    } else {
+        __asm__ volatile ("bkpt");
+    }
+}
+
+static void sn32_usb_write_fifo(usbep_t ep, const uint8_t *buf, size_t sz) {
+    size_t off;
+    size_t chunk;
+    uint32_t data;
+
+    if (ep == 0) {
+        off = 0;
+
+        while (off != sz) {
+            chunk = 4;
+            if (off + chunk > sz)
+                chunk = sz - off;
+
+            memcpy(&data, buf, chunk);
+
+            SN_USB->RWADDR = off;
+            SN_USB->RWDATA = data;
+            SN_USB->RWSTATUS = 0x01;
+            while (SN_USB->RWSTATUS & 0x01);
+
+            off += chunk;
+            buf += chunk;
+        }
+    } else {
+        __asm__ volatile ("bkpt");
+    }
+}
 
 /**
  * @brief   Reads from a dedicated packet buffer.
@@ -140,40 +198,8 @@ static size_t usb_packet_read_to_buffer(usbep_t ep, uint8_t *buf) {
  * @notapi
  */
 static void usb_packet_write_from_buffer(usbep_t ep, const uint8_t *buf, size_t n) {
-//   sn32_usb_descriptor_t *udp = USB_GET_ENDPOINT_DESCRIPTOR(ep);
-//   sn32_usb_pma_t *pmap = USB_ADDR2PTR(udp->TXADDR0);
-//   int i = (int)n;
-
-//   udp->TXCOUNT0 = (sn32_usb_pma_t)n;
-
-//   while (i > 0) {
-//     uint32_t w;
-
-//     w  = *buf++;
-//     w |= *buf++ << 8;
-//     *pmap++ = (sn32_usb_pma_t)w;
-//     i -= 2;
-//   }
-
-    // volatile	uint32_t	USB_SRAM;
-    // size_t n;
-    // int i = (int)n;
-
-    // n = (SN_USB->EP0CTL + ep) & mskEPn_CNT; // Endpoint byte count
-
-    // while (i > 0) {
-    //     // uint32_t w;
-
-    //     // w  = *buf++;
-    //     // w |= *buf++ << 8;
-    //     // *pmap++ = (sn32_usb_pma_t)w;
-
-    //     fnUSBINT_WriteFIFO(0x00, buf);
-
-    //     i -= 2;
-    // }
-
-    fnUSBINT_WriteFIFO(wUSB_EPnOffset[ep], *buf);
+    sn32_usb_write_fifo(ep, buf, n);
+    // USB_EPnAck(ep, n);
 }
 
 /**
@@ -265,6 +291,8 @@ static void usb_serve_endpoints(USBDriver *usbp, uint32_t ep, uint32_t iwIntFlag
   }
 }
 
+uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const void** const DescriptorAddress);
+
 /**
  * @brief   USB shared ISR.
  *
@@ -279,12 +307,12 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 	iwIntFlag = SN_USB->INSTS;
 	SN_USB->INSTSC = 0xFEFBFFFF;	//** Don't clear PRESETUP & ERR_SETUP flag
 
-	if(iwIntFlag == 0)
-	{
-		//@20160902 add for EMC protection
-		USB_ReturntoNormal();
-		return;
-	}
+	// if(iwIntFlag == 0)
+	// {
+	// 	//@20160902 add for EMC protection
+	// 	USB_ReturntoNormal();
+	// 	return;
+	// }
 
 	/////////////////////////////////////////////////
 	/* Device Status Interrupt (BusReset, Suspend) */
@@ -317,37 +345,65 @@ static void usb_lld_serve_interrupt(USBDriver *usbp) {
 	/////////////////////////////////////////////////
 	else if (iwIntFlag & (mskEP0_SETUP|mskEP0_IN|mskEP0_OUT|mskEP0_IN_STALL|mskEP0_OUT_STALL))
 	{
+        const USBEndpointConfig *epcp = usbp->epc[0];
+
 		if (iwIntFlag & mskEP0_SETUP)
 		{
 			/* SETUP */
-			// USB_EP0SetupEvent();
-            //  __USB_CLRINSTS((mskEP0_SETUP|mskEP0_PRESETUP|mskEP0_OUT_STALL|mskEP0_IN_STALL));
-            usb_serve_endpoints(usbp, 0, iwIntFlag);
-            // _usb_isr_invoke_setup_cb(usbp, 0);
+            __USB_CLRINSTS((mskEP0_SETUP|mskEP0_PRESETUP|mskEP0_OUT_STALL|mskEP0_IN_STALL));
+            //** keep EP0	NAK
+        	USB_EPnNak(USB_EP0);
+            _usb_isr_invoke_setup_cb(usbp, 0);
+            USB_EPnAck(USB_EP0, 18);
+          //   // uint8_t buf[18] = { 0xAA, 0xBB, 0xCC, 0xDD };
+            // sn32_usb_write_fifo(0, buf, sizeof(buf));
+            // const void *desc;
+            // size_t sz = get_usb_descriptor(0x0100, 0, &desc);
+            // (void)sz;
+            // sn32_usb_write_fifo(0, desc, 8);
+            // USB_EPnAck(USB_EP0, 8);
+
+        // __USB_CLRINSTS((mskEP0_SETUP|mskEP0_PRESETUP|mskEP0_OUT_STALL|mskEP0_IN_STALL));		
+        // // keep EP0	NAK
+        // USB_EPnNak(USB_EP0);
+        // fnUSBINT_WriteFIFO(0, 0x02000112);
+        // fnUSBINT_WriteFIFO(4, 0x40000000);
+        // fnUSBINT_WriteFIFO(8, 0x70140c45);
+        // fnUSBINT_WriteFIFO(12, 0x02010108);
+        // fnUSBINT_WriteFIFO(16, 0x0100);
+        // USB_EPnAck(USB_EP0,18);
 		}
 		else if (iwIntFlag & mskEP0_IN)
 		{
 			/* IN */
-			// USB_EP0InEvent();
+            // USB_EPnAck(0, epcp->in_state->txsize);
             // __USB_CLRINSTS(mskEP0_IN);
-            usb_serve_endpoints(usbp, 0, iwIntFlag);
-            // USBInEndpointState *iesp = usbp->epc[0]->in_state;
-            // _usb_isr_invoke_in_cb(usbp, 0);
+            // // _usb_isr_invoke_in_cb(usbp, 0);
+
+            // USB_EPnAck(USB_EP0, 18);
+
+            __USB_CLRINSTS(mskEP0_IN);
+            if (address) {
+              SN_USB->ADDR = address;
+              address = 0;
+			        USB_EPnStall(USB_EP0);
+            }
 		}
 		else if (iwIntFlag & mskEP0_OUT)
 		{
-			/* OUT */
-			// USB_EP0OutEvent();
-            // _usb_isr_invoke_out_cb(usbp, 0);
-            // __USB_CLRINSTS(mskEP0_OUT);
-            usb_serve_endpoints(usbp, 0, iwIntFlag);
+            // size_t cnt = SN_USB->EP0CTL_b.ENDP_CNT;
+            // sn32_usb_read_fifo(0, epcp->out_state->rxbuf, cnt);
+            // epcp->out_state->rxbuf += cnt;
+            // epcp->out_state->
+
+            __USB_CLRINSTS(mskEP0_OUT);
+            _usb_isr_invoke_out_cb(usbp, 0);
 		}
 		else if (iwIntFlag & (mskEP0_IN_STALL|mskEP0_OUT_STALL))
 		{
 			/* EP0_IN_OUT_STALL */
-			// USB_EPnStall(USB_EP0);
-            usb_serve_endpoints(usbp, 0, iwIntFlag);
-            // SN_USB->INSTSC = (mskEP0_IN_STALL|mskEP0_OUT_STALL);
+			USB_EPnStall(USB_EP0);
+            SN_USB->INSTSC = (mskEP0_IN_STALL|mskEP0_OUT_STALL);
 		}
 	}
 	/////////////////////////////////////////////////
@@ -531,7 +587,9 @@ void usb_lld_reset(USBDriver *usbp) {
  * @notapi
  */
 void usb_lld_set_address(USBDriver *usbp) {
-    SN_USB->ADDR = (uint32_t)(usbp->address);
+  // SN_USB->ADDR = usbp->address;
+  // USB_EPnAck(USB_EP0,0);
+    address = usbp->address;
 }
 
 /**
@@ -732,26 +790,7 @@ usbepstatus_t usb_lld_get_status_in(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_read_setup(USBDriver *usbp, usbep_t ep, uint8_t *buf) {
-    // uint32_t	USB_SRAM_EP0_W0, USB_SRAM_EP0_W1;
-    uint32_t	USB_SRAM_EP0_W0;
-
-	//** Clear ENDP0_SETUP & ENDP0_PRESETUP = 0
-	// __USB_CLRINSTS((mskEP0_SETUP|mskEP0_PRESETUP|mskEP0_OUT_STALL|mskEP0_IN_STALL));
-	//** keep EP0	NAK
-	USB_EPnNak(USB_EP0);
-
-    /*save SETUP cmd data*/
-    // fnUSBINT_ReadFIFO(0x00);
-    // USB_SRAM_EP0_W0 = wUSBINT_ReadDataBuf;
-    // memcpy(buf, &USB_SRAM_EP0_W0, 4);
-    // memcpy(buf, usbp->epc[ep]->setup_buf, 4);
-    // fnUSBINT_ReadFIFO(0x04);
-    // USB_SRAM_EP0_W1 = wUSBINT_ReadDataBuf;
-    // memcpy(buf+2, &USB_SRAM_EP0_W1, 4);
-
-    fnUSBINT_ReadFIFO(0x00);
-    USB_SRAM_EP0_W0 = wUSBINT_ReadDataBuf;
-    memcpy(buf, &USB_SRAM_EP0_W0, 4);
+    sn32_usb_read_fifo(ep, buf, 8);
 }
 
 // /**
@@ -816,6 +855,8 @@ void usb_lld_start_out(USBDriver *usbp, usbep_t ep) {
  * @notapi
  */
 void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
+  if (address) return;
+
   size_t n;
   USBInEndpointState *isp = usbp->epc[ep]->in_state;
 
@@ -826,10 +867,7 @@ void usb_lld_start_in(USBDriver *usbp, usbep_t ep) {
 
   isp->txlast = n;
   usb_packet_write_from_buffer(ep, isp->txbuf, n);
-//   fnUSBINT_WriteFIFO(0x00, (uint32_t)*isp->txbuf);
-
-//   EPR_SET_STAT_TX(ep, EPR_STAT_TX_VALID);
-
+  USB_EPnAck(ep, n);
 }
 
 /**
