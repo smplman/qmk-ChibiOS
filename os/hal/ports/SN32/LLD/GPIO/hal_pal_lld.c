@@ -44,15 +44,35 @@
 
 static void initgpio(sn32_gpio_t *gpiop, const sn32_gpio_setup_t *config) {
 
-    //   gpiop->OTYPER  = config->otyper;
-    //   gpiop->ASCR    = config->ascr;
-    //   gpiop->OSPEEDR = config->ospeedr;
-    //   gpiop->PUPDR   = config->pupdr;
-    //   gpiop->ODR     = config->odr;
-    //   gpiop->AFRL    = config->afrl;
-    //   gpiop->AFRH    = config->afrh;
-    gpiop->MODER   = config->moder;
-    //   gpiop->LOCKR   = config->lockr;
+    // volatile uint32_t     DATA;
+    // volatile uint32_t     MODE;
+    // volatile uint32_t     CFG;
+    // volatile uint32_t     IS;
+    // volatile uint32_t     IBS;
+    // volatile uint32_t     IEV;
+    // volatile uint32_t     IE;
+    // volatile uint32_t     RIS;
+    // volatile uint32_t     IC;
+    // volatile uint32_t     BSET;
+    // volatile uint32_t     BCLR;
+
+    gpiop->DATA  = config->data;
+    gpiop->MODE  = config->mode;
+    gpiop->CFG   = config->cfg;
+    gpiop->IBS   = config->ibs;
+    gpiop->IEV   = config->iev;
+    gpiop->IE    = config->ie;
+    gpiop->RIS   = config->ris;
+    gpiop->IC    = config->ic;
+    gpiop->BSET  = config->bset;
+    gpiop->BCLR  = config->bclr;
+
+	// GPIO_Mode			(GPIO_PORT2, GPIO_PIN0, GPIO_MODE_INPUT);
+	// GPIO_Config		(GPIO_PORT2, GPIO_PIN0, GPIO_CFG_PULL_DOWN);
+	// //P2.0 as rising edge
+	// GPIO_P2Trigger(GPIO_PIN0,	GPIO_IS_EDGE, GPIO_IBS_EDGE_TRIGGER, GPIO_IEV_RISING_EDGE);
+	// GPIO_Interrupt(GPIO_PORT2, GPIO_PIN0,	GPIO_IE_EN);
+    // GPIO_Clr			(GPIO_PORT2, GPIO_PIN5);
 }
 
 /*===========================================================================*/

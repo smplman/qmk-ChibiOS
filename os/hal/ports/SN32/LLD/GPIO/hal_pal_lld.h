@@ -31,111 +31,6 @@
 /* Unsupported modes and specific modes                                      */
 /*===========================================================================*/
 
-#undef PAL_MODE_RESET
-#undef PAL_MODE_UNCONNECTED
-#undef PAL_MODE_INPUT
-#undef PAL_MODE_INPUT_PULLUP
-#undef PAL_MODE_INPUT_PULLDOWN
-#undef PAL_MODE_INPUT_ANALOG
-#undef PAL_MODE_OUTPUT_PUSHPULL
-#undef PAL_MODE_OUTPUT_OPENDRAIN
-
-/**
- * @name    SN32-specific I/O mode flags
- * @{
- */
-#define PAL_SN32_MODE_MASK             (3U << 0U)
-#define PAL_SN32_MODE_INPUT            (0U << 0U)
-#define PAL_SN32_MODE_OUTPUT           (1U << 0U)
-#define PAL_SN32_MODE_ALTERNATE        (2U << 0U)
-#define PAL_SN32_MODE_ANALOG           (3U << 0U)
-
-#define PAL_SN32_OTYPE_MASK            (1U << 2U)
-#define PAL_SN32_OTYPE_PUSHPULL        (0U << 2U)
-#define PAL_SN32_OTYPE_OPENDRAIN       (1U << 2U)
-
-#define PAL_SN32_OSPEED_MASK           (3U << 3U)
-#define PAL_SN32_OSPEED_LOW            (0U << 3U)
-#define PAL_SN32_OSPEED_MEDIUM         (1U << 3U)
-#define PAL_SN32_OSPEED_FAST           (2U << 3U)
-#define PAL_SN32_OSPEED_HIGH           (3U << 3U)
-
-#define PAL_SN32_PUPDR_MASK            (3U << 5U)
-#define PAL_SN32_PUPDR_FLOATING        (0U << 5U)
-#define PAL_SN32_PUPDR_PULLUP          (1U << 5U)
-#define PAL_SN32_PUPDR_PULLDOWN        (2U << 5U)
-
-#define PAL_SN32_ALTERNATE_MASK        (15U << 7U)
-#define PAL_SN32_ALTERNATE(n)          ((n) << 7U)
-
-#define PAL_SN32_ASCR_MASK             (1U << 11U)
-#define PAL_SN32_ASCR_OFF              (0U << 11U)
-#define PAL_SN32_ASCR_ON               (1U << 11U)
-
-#define PAL_SN32_LOCKR_MASK            (1U << 12U)
-#define PAL_SN32_LOCKR_OFF             (0U << 12U)
-#define PAL_SN32_LOCKR_ON              (1U << 12U)
-
-/**
- * @brief   Alternate function.
- *
- * @param[in] n         alternate function selector
- */
-#define PAL_MODE_ALTERNATE(n)           (PAL_SN32_MODE_ALTERNATE |         \
-                                         PAL_SN32_ALTERNATE(n))
-/** @} */
-
-/**
- * @name    Standard I/O mode flags
- * @{
- */
-/**
- * @brief   Implemented as input.
- */
-#define PAL_MODE_RESET                  PAL_SN32_MODE_INPUT
-
-/**
- * @brief   Implemented as analog with analog switch disabled and lock.
- */
-#define PAL_MODE_UNCONNECTED            (PAL_SN32_MODE_ANALOG |            \
-                                         PAL_SN32_ASCR_OFF |               \
-                                         PAL_SN32_LOCKR_ON)
-
-/**
- * @brief   Regular input high-Z pad.
- */
-#define PAL_MODE_INPUT                  PAL_SN32_MODE_INPUT
-
-/**
- * @brief   Input pad with weak pull up resistor.
- */
-#define PAL_MODE_INPUT_PULLUP           (PAL_SN32_MODE_INPUT |             \
-                                         PAL_SN32_PUPDR_PULLUP)
-
-/**
- * @brief   Input pad with weak pull down resistor.
- */
-#define PAL_MODE_INPUT_PULLDOWN         (PAL_SN32_MODE_INPUT |             \
-                                         PAL_SN32_PUPDR_PULLDOWN)
-
-/**
- * @brief   Analog input mode.
- */
-#define PAL_MODE_INPUT_ANALOG           (PAL_SN32_MODE_ANALOG |            \
-                                         PAL_SN32_ASCR_ON)
-
-/**
- * @brief   Push-pull output pad.
- */
-#define PAL_MODE_OUTPUT_PUSHPULL        (PAL_SN32_MODE_OUTPUT |            \
-                                         PAL_SN32_OTYPE_PUSHPULL)
-
-/**
- * @brief   Open-drain output pad.
- */
-#define PAL_MODE_OUTPUT_OPENDRAIN       (PAL_SN32_MODE_OUTPUT |            \
-                                         PAL_SN32_OTYPE_OPENDRAIN)
-/** @} */
 
 /* Discarded definitions from the ST headers, the PAL driver uses its own
    definitions in order to have an unified handling for all devices.
@@ -155,10 +50,6 @@
 #define GPIOC                           ((sn32_gpio_t *)SN_GPIO2_BASE)
 #define GPIOD                           ((sn32_gpio_t *)SN_GPIO3_BASE)
 
-// #define GPIOA                           ((SN_GPIO0_Type*)          SN_GPIO0_BASE)
-// #define GPIOB                           ((SN_GPIO0_Type*)          SN_GPIO1_BASE)
-// #define GPIOC                           ((SN_GPIO0_Type*)          SN_GPIO2_BASE)
-// #define GPIOD                           ((SN_GPIO3_Type*)          SN_GPIO3_BASE)
 /** @} */
 
 /*===========================================================================*/
@@ -172,7 +63,7 @@
 /**
  * @brief   Width, in bits, of an I/O port.
  */
-#define PAL_IOPORTS_WIDTH 16
+#define PAL_IOPORTS_WIDTH 32
 
 /**
  * @brief   Whole port mask.
@@ -218,48 +109,45 @@
  */
 typedef struct {
 
-  volatile uint32_t     MODER;
-  volatile uint32_t     OTYPER;
-  volatile uint32_t     OSPEEDR;
-  volatile uint32_t     PUPDR;
-  volatile uint32_t     IDR;
-  volatile uint32_t     ODR;
-  volatile union {
-    uint32_t            W;
-    struct {
-      uint16_t          set;
-      uint16_t          clear;
-    } H;
-  } BSRR;
-  volatile uint32_t     LOCKR;
-  volatile uint32_t     AFRL;
-  volatile uint32_t     AFRH;
-  volatile uint32_t     BRR;
-  volatile uint32_t     ASCR;
+  volatile uint32_t     DATA;
+  volatile uint32_t     MODE;
+  volatile uint32_t     CFG;
+  volatile uint32_t     IS;
+  volatile uint32_t     IBS;
+  volatile uint32_t     IEV;
+  volatile uint32_t     IE;
+  volatile uint32_t     RIS;
+  volatile uint32_t     IC;
+  volatile uint32_t     BSET;
+  volatile uint32_t     BCLR;
 } sn32_gpio_t;
 
 /**
  * @brief   GPIO port setup info.
  */
 typedef struct {
-  /** Initial value for MODER register.*/
-  uint32_t              moder;
-  /** Initial value for OTYPER register.*/
-  uint32_t              otyper;
-  /** Initial value for OSPEEDR register.*/
-  uint32_t              ospeedr;
-  /** Initial value for PUPDR register.*/
-  uint32_t              pupdr;
-  /** Initial value for ODR register.*/
-  uint32_t              odr;
-  /** Initial value for AFRL register.*/
-  uint32_t              afrl;
-  /** Initial value for AFRH register.*/
-  uint32_t              afrh;
-  /** Initial value for ASCR register.*/
-  uint32_t              ascr;
-  /** Initial value for LOCKR register.*/
-  uint32_t              lockr;
+  /** Initial value for DATA register.*/
+  uint32_t              data;
+  /** Initial value for MODE register.*/
+  uint32_t              mode;
+  /** Initial value for CFG register.*/
+  uint32_t              cfg;
+  /** Initial value for IS register.*/
+  uint32_t              is;
+  /** Initial value for IBS register.*/
+  uint32_t              ibs;
+  /** Initial value for IEV register.*/
+  uint32_t              iev;
+  /** Initial value for IE register.*/
+  uint32_t              ie;
+  /** Initial value for RIS register.*/
+  uint32_t              ris;
+  /** Initial value for IC register.*/
+  uint32_t              ic;
+  /** Initial value for BSET register.*/
+  uint32_t              bset;
+  /** Initial value for BCLR register.*/
+  uint32_t              bclr;
 } sn32_gpio_setup_t;
 
 /**
@@ -369,7 +257,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readport(port) ((port)->IDR)
+// #define pal_lld_readport(port) ((port)->IDR)
 
 /**
  * @brief   Reads the output latch.
@@ -383,7 +271,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readlatch(port) ((port)->ODR)
+// #define pal_lld_readlatch(port) ((port)->ODR)
 
 /**
  * @brief   Writes on a I/O port.
@@ -395,7 +283,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writeport(port, bits) ((port)->ODR = (bits))
+// #define pal_lld_writeport(port, bits) ((port)->ODR = (bits))
 
 /**
  * @brief   Sets a bits mask on a I/O port.
@@ -407,7 +295,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setport(port, bits) ((port)->BSRR.H.set = (uint16_t)(bits))
+// #define pal_lld_setport(port, bits) ((port)->BSRR.H.set = (uint16_t)(bits))
 
 /**
  * @brief   Clears a bits mask on a I/O port.
@@ -419,7 +307,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_clearport(port, bits) ((port)->BSRR.H.clear = (uint16_t)(bits))
+// #define pal_lld_clearport(port, bits) ((port)->BSRR.H.clear = (uint16_t)(bits))
 
 /**
  * @brief   Writes a group of bits.
@@ -434,9 +322,9 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writegroup(port, mask, offset, bits)                        \
-  ((port)->BSRR.W = ((~(bits) & (mask)) << (16U + (offset))) |              \
-                     (((bits) & (mask)) << (offset)))
+// #define pal_lld_writegroup(port, mask, offset, bits)
+//   ((port)->BSRR.W = ((~(bits) & (mask)) << (16U + (offset))) |
+//                      (((bits) & (mask)) << (offset)))
 
 /**
  * @brief   Pads group mode setup.
