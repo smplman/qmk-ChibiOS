@@ -31,6 +31,10 @@
 /* Unsupported modes and specific modes                                      */
 /*===========================================================================*/
 
+/* Specifies palInit() without parameter, required until all platforms will
+   be updated to the new style.*/
+// #define PAL_NEW_INIT
+
 
 /* Discarded definitions from the ST headers, the PAL driver uses its own
    definitions in order to have an unified handling for all devices.
@@ -45,10 +49,10 @@
  * @name    GPIO ports definitions
  * @{
  */
-#define GPIOA                           ((sn32_gpio_t *)SN_GPIO0_BASE)
-#define GPIOB                           ((sn32_gpio_t *)SN_GPIO1_BASE)
-#define GPIOC                           ((sn32_gpio_t *)SN_GPIO2_BASE)
-#define GPIOD                           ((sn32_gpio_t *)SN_GPIO3_BASE)
+#define GPIOA                         ((SN_GPIO0_Type *)SN_GPIO0_BASE)// SN_GPIO0//
+#define GPIOB                         ((SN_GPIO0_Type *)SN_GPIO1_BASE)// SN_GPIO1//
+#define GPIOC                         ((SN_GPIO0_Type *)SN_GPIO2_BASE)// SN_GPIO2//
+#define GPIOD                         ((SN_GPIO0_Type *)SN_GPIO3_BASE)// SN_GPIO3//
 
 /** @} */
 
@@ -63,7 +67,7 @@
 /**
  * @brief   Width, in bits, of an I/O port.
  */
-#define PAL_IOPORTS_WIDTH 32
+#define PAL_IOPORTS_WIDTH 16
 
 /**
  * @brief   Whole port mask.
@@ -239,79 +243,73 @@ typedef sn32_gpio_t * ioportid_t;
 /*===========================================================================*/
 
 /**
- * @brief   GPIO ports subsystem initialization.
+ * @brief   Low level PAL subsystem initialization.
  *
  * @notapi
  */
 #define pal_lld_init(config) _pal_lld_init(config)
 
 /**
- * @brief   Reads an I/O port.
- * @details This function is implemented by reading the GPIO IDR register, the
- *          implementation has no side effects.
- * @note    This function is not meant to be invoked directly by the application
- *          code.
+ * @brief   Reads the physical I/O port states.
  *
  * @param[in] port      port identifier
  * @return              The port bits.
  *
  * @notapi
  */
-// #define pal_lld_readport(port) ((port)->IDR)
+#define pal_lld_readport(port) ((port)->DATA)
 
 /**
  * @brief   Reads the output latch.
- * @details This function is implemented by reading the GPIO ODR register, the
- *          implementation has no side effects.
- * @note    This function is not meant to be invoked directly by the application
- *          code.
+ * @details The purpose of this function is to read back the latched output
+ *          value.
  *
  * @param[in] port      port identifier
  * @return              The latched logical states.
  *
  * @notapi
  */
-// #define pal_lld_readlatch(port) ((port)->ODR)
+#define pal_lld_readlatch(port) ((port)->RIS)
 
 /**
- * @brief   Writes on a I/O port.
- * @details This function is implemented by writing the GPIO ODR register, the
- *          implementation has no side effects.
+ * @brief   Writes a bits mask on a I/O port.
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be written on the specified port
  *
  * @notapi
  */
-// #define pal_lld_writeport(port, bits) ((port)->ODR = (bits))
+#define pal_lld_writeport(port, bits) ((port)->DATA = (uint16_t)(bits))
 
 /**
  * @brief   Sets a bits mask on a I/O port.
- * @details This function is implemented by writing the GPIO BSRR register, the
- *          implementation has no side effects.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be ORed on the specified port
  *
  * @notapi
  */
-// #define pal_lld_setport(port, bits) ((port)->BSRR.H.set = (uint16_t)(bits))
+#define pal_lld_setport(port, bits) ((port)->BSET = (uint16_t)(bits))
 
 /**
  * @brief   Clears a bits mask on a I/O port.
- * @details This function is implemented by writing the GPIO BSRR register, the
- *          implementation has no side effects.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
  *
  * @param[in] port      port identifier
  * @param[in] bits      bits to be cleared on the specified port
  *
  * @notapi
  */
-// #define pal_lld_clearport(port, bits) ((port)->BSRR.H.clear = (uint16_t)(bits))
+#define pal_lld_clearport(port, bits) ((port)->BCLR = (uint16_t)(bits))
 
 /**
  * @brief   Writes a group of bits.
- * @details This function is implemented by writing the GPIO BSRR register, the
+ * @details This function is implemented by writing the GPIO BSET register, the
  *          implementation has no side effects.
  *
  * @param[in] port      port identifier
@@ -322,14 +320,17 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-// #define pal_lld_writegroup(port, mask, offset, bits)
-//   ((port)->BSRR.W = ((~(bits) & (mask)) << (16U + (offset))) |
-//                      (((bits) & (mask)) << (offset)))
+#define pal_lld_writegroup(port, mask, offset, bits) {                      \
+  uint32_t w = ((~(uint32_t)(bits) & (uint32_t)(mask)) << (16U + (offset))) | \
+               ((uint32_t)(bits) & (uint32_t)(mask)) << (offset);           \
+  (port)->BSET = w;                                                       \
+}
 
 /**
  * @brief   Pads group mode setup.
  * @details This function programs a pads group belonging to the same port
  *          with the specified mode.
+ * @note    Programming an unknown or unsupported mode is silently ignored.
  *
  * @param[in] port      port identifier
  * @param[in] mask      group mask
@@ -342,7 +343,28 @@ typedef sn32_gpio_t * ioportid_t;
   _pal_lld_setgroupmode(port, mask << offset, mode)
 
 /**
+ * @brief   Reads a logical state from an I/O pad.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
+ *
+ * @param[in] port      port identifier
+ * @param[in] pad       pad number within the port
+ * @return              The logical state.
+ * @retval PAL_LOW      low logical state.
+ * @retval PAL_HIGH     high logical state.
+ *
+ * @notapi
+ */
+#define pal_lld_readpad(port, pad) ((port)->DATA | 0x0 << pad)
+
+/**
  * @brief   Writes a logical state on an output pad.
+ * @note    This function is not meant to be invoked directly by the
+ *          application  code.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
  *
  * @param[in] port      port identifier
  * @param[in] pad       pad number within the port
@@ -351,16 +373,76 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writepad(port, pad, bit) pal_lld_writegroup(port, 1, pad, bit)
+#define pal_lld_writepad(port, pad, bit) ((port)->DATA |= bit << pad)
 
-extern const PALConfig pal_default_config;
+/**
+ * @brief   Sets a pad logical state to @p PAL_HIGH.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
+ *
+ * @param[in] port      port identifier
+ * @param[in] pad       pad number within the port
+ *
+ * @notapi
+ */
+#define pal_lld_setpad(port, pad) ((port)->BSET |= 1 << pad)
+
+/**
+ * @brief   Clears a pad logical state to @p PAL_LOW.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
+ *
+ * @param[in] port      port identifier
+ * @param[in] pad       pad number within the port
+ *
+ * @notapi
+ */
+#define pal_lld_clearpad(port, pad) ((port)->BCLR |= 1 << pad)
+
+/**
+ * @brief   Toggles a pad logical state.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
+ *
+ * @param[in] port      port identifier
+ * @param[in] pad       pad number within the port
+ *
+ * @notapi
+ */
+// #define pal_lld_togglepad(port, pad)
+
+/**
+ * @brief   Pad mode setup.
+ * @details This function programs a pad with the specified mode.
+ * @note    The @ref PAL provides a default software implementation of this
+ *          functionality, implement this function if can optimize it by using
+ *          special hardware functionalities or special coding.
+ * @note    Programming an unknown or unsupported mode is silently ignored.
+ *
+ * @param[in] port      port identifier
+ * @param[in] pad       pad number within the port
+ * @param[in] mode      pad mode
+ *
+ * @notapi
+ */
+// #define pal_lld_setpadmode(port, pad, mode) ((port)->MODE |= mode << pad)
+
+#define pal_lld_setpadmode(port,pad, mode)                      \
+  _pal_lld_setpadmode(port,pad, mode)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+  extern const PALConfig pal_default_config;
   void _pal_lld_init(const PALConfig *config);
   void _pal_lld_setgroupmode(ioportid_t port,
                              ioportmask_t mask,
+                             iomode_t mode);
+  void _pal_lld_setpadmode(ioportid_t port,
+                             uint32_t pad,
                              iomode_t mode);
 #ifdef __cplusplus
 }
