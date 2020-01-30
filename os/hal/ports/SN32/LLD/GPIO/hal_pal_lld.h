@@ -31,9 +31,9 @@
 /* Unsupported modes and specific modes                                      */
 /*===========================================================================*/
 
-/* Specifies palInit() without parameter, required until all platforms will
-   be updated to the new style.*/
-// #define PAL_NEW_INIT
+// /* Specifies palInit() without parameter, required until all platforms will
+//    be updated to the new style.*/
+// // #define PAL_NEW_INIT
 
 
 /* Discarded definitions from the ST headers, the PAL driver uses its own
@@ -269,7 +269,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readlatch(port) ((port)->RIS)
+// #define pal_lld_readlatch(port) ((port)->RIS)
 
 /**
  * @brief   Writes a bits mask on a I/O port.
@@ -356,7 +356,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readpad(port, pad) ((port)->DATA | 0x0 << pad)
+#define pal_lld_readpad(port, pad) ((port)->DATA | (0x0 << pad))
 
 /**
  * @brief   Writes a logical state on an output pad.
@@ -373,7 +373,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writepad(port, pad, bit) ((port)->DATA |= bit << pad)
+#define pal_lld_writepad(port, pad, bit) ((port)->DATA |= (bit << pad))
 
 /**
  * @brief   Sets a pad logical state to @p PAL_HIGH.
@@ -386,7 +386,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setpad(port, pad) ((port)->BSET |= 1 << pad)
+#define pal_lld_setpad(port, pad) ((port)->BSET |= (0x1 << pad))
 
 /**
  * @brief   Clears a pad logical state to @p PAL_LOW.
@@ -399,7 +399,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_clearpad(port, pad) ((port)->BCLR |= 1 << pad)
+#define pal_lld_clearpad(port, pad) ((port)->BCLR |= (0x1 << pad))
 
 /**
  * @brief   Toggles a pad logical state.
@@ -430,8 +430,8 @@ typedef sn32_gpio_t * ioportid_t;
  */
 // #define pal_lld_setpadmode(port, pad, mode) ((port)->MODE |= mode << pad)
 
-#define pal_lld_setpadmode(port,pad, mode)                      \
-  _pal_lld_setpadmode(port,pad, mode)
+#define pal_lld_setpadmode(port, pad, mode)                      \
+  _pal_lld_setpadmode(port, pad, mode)
 
 #ifdef __cplusplus
 extern "C" {

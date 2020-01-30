@@ -47,13 +47,13 @@ static void initgpio(SN_GPIO0_Type *gpiop, const sn32_gpio_setup_t *config) {
     gpiop->DATA  = config->data;
     gpiop->MODE  = config->mode;
     gpiop->CFG   = config->cfg;
-    gpiop->IBS   = config->ibs;
-    gpiop->IEV   = config->iev;
-    gpiop->IE    = config->ie;
+    // gpiop->IBS   = config->ibs;
+    // gpiop->IEV   = config->iev;
+    // gpiop->IE    = config->ie;
     // gpiop->RIS   = config->ris;
-    gpiop->IC    = config->ic;
-    gpiop->BSET  = config->bset;
-    gpiop->BCLR  = config->bclr;
+    // gpiop->IC    = config->ic;
+    // gpiop->BSET  = config->bset;
+    // gpiop->BCLR  = config->bclr;
 }
 
 /*===========================================================================*/
@@ -112,13 +112,13 @@ void _pal_lld_setgroupmode(ioportid_t port,
 
     // __asm__ volatile ("bkpt");
 
-    uint32_t wGpiomode=0;
+    // uint32_t wGpiomode=0;
 
-    wGpiomode=(uint32_t)port->MODE;
-    wGpiomode&=~mask;
-    wGpiomode|=mask;
-    port->MODE=wGpiomode;
-    wGpiomode=port->MODE;		//for checlk
+    // wGpiomode=(uint32_t)port->MODE;
+    // wGpiomode&=~mask;
+    // wGpiomode|=mask;
+    // port->MODE=wGpiomode;
+    // wGpiomode=port->MODE;		//for checlk
 }
 
 /**
@@ -138,13 +138,20 @@ void _pal_lld_setpadmode(ioportid_t port,
                            uint32_t pad,
                            iomode_t mode) {
 
-    uint32_t wGpiomode=0;
+    // __asm__ volatile ("bkpt");
 
-    wGpiomode=(uint32_t)port->MODE;
-    wGpiomode&=~(1<<(uint32_t) pad);
-    wGpiomode|=(mode<<(uint32_t) pad);
-    port->MODE=wGpiomode;
-    wGpiomode=port->MODE;		//for checlk
+    // mode = 0 input / mode = 1 output
+    if (mode == PAL_MODE_INPUT_PULLUP) {
+        // input
+        port->MODE |= (0 << pad);
+        // pullup
+        port->CFG &= ~(3 << (pad * 2));
+    }
+
+    if (mode == PAL_MODE_OUTPUT_PUSHPULL) {
+        // output
+        port->MODE |= (1 << pad);
+    }
 }
 
 #endif /* HAL_USE_PAL */
