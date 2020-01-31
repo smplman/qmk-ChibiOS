@@ -47,13 +47,6 @@ static void initgpio(SN_GPIO0_Type *gpiop, const sn32_gpio_setup_t *config) {
     gpiop->DATA  = config->data;
     gpiop->MODE  = config->mode;
     gpiop->CFG   = config->cfg;
-    // gpiop->IBS   = config->ibs;
-    // gpiop->IEV   = config->iev;
-    // gpiop->IE    = config->ie;
-    // gpiop->RIS   = config->ris;
-    // gpiop->IC    = config->ic;
-    // gpiop->BSET  = config->bset;
-    // gpiop->BCLR  = config->bclr;
 }
 
 /*===========================================================================*/
@@ -94,34 +87,6 @@ void _pal_lld_init(const PALConfig *config) {
 }
 
 /**
- * @brief   Pads mode setup.
- * @details This function programs a pads group belonging to the same port
- *          with the specified mode.
- * @note    @p PAL_MODE_UNCONNECTED is implemented as push pull at minimum
- *          speed.
- *
- * @param[in] port      the port identifier
- * @param[in] mask      the group mask
- * @param[in] mode      the mode
- *
- * @notapi
- */
-void _pal_lld_setgroupmode(ioportid_t port,
-                           ioportmask_t mask,
-                           iomode_t mode) {
-
-    // __asm__ volatile ("bkpt");
-
-    // uint32_t wGpiomode=0;
-
-    // wGpiomode=(uint32_t)port->MODE;
-    // wGpiomode&=~mask;
-    // wGpiomode|=mask;
-    // port->MODE=wGpiomode;
-    // wGpiomode=port->MODE;		//for checlk
-}
-
-/**
  * @brief   Pad mode setup.
  * @details This function programs a pad
  *          with the specified mode.
@@ -140,17 +105,47 @@ void _pal_lld_setpadmode(ioportid_t port,
 
     // __asm__ volatile ("bkpt");
 
-    // mode = 0 input / mode = 1 output
-    if (mode == PAL_MODE_INPUT_PULLUP) {
-        // input
-        port->MODE |= (0 << pad);
-        // pullup
-        port->CFG &= ~(3 << (pad * 2));
-    }
+    switch (mode)
+    {
 
-    if (mode == PAL_MODE_OUTPUT_PUSHPULL) {
-        // output
+    case PAL_MODE_UNCONNECTED:
+        break;
+
+    case PAL_MODE_INPUT:
+        port->MODE |= (0 << pad);
+        break;
+
+    case PAL_MODE_INPUT_PULLUP:
+        port->MODE |= (0 << pad);
+        port->CFG &= ~(3 << (pad * 2));
+		// port->CFG |= (0 <<(pad * 2));
+        break;
+
+    case PAL_MODE_INPUT_PULLDOWN:
+        port->MODE |= (0 << pad);
+        port->CFG &= ~(3 << (pad * 2));
+		// port->CFG |= (2 <<(pad * 2));
+        break;
+
+    case PAL_MODE_INPUT_ANALOG:
+        port->MODE |= (0 << pad);
+        port->CFG &= ~(3 << (pad * 2));
+		// port->CFG |= (3 <<(pad * 2));
+        break;
+
+    case PAL_MODE_OUTPUT_PUSHPULL:
         port->MODE |= (1 << pad);
+        // port->CFG &= ~(3 << (pad * 2));
+		// port->CFG |= (2 <<(pad * 2));
+        /* Send on the output */
+        // port->BCLR = (1 << pad);
+        break;
+
+    case 7:
+        break;
+
+    default:
+        break;
     }
 }
 

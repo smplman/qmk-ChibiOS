@@ -76,6 +76,11 @@
 #define PAL_WHOLE_PORT ((ioportmask_t)0xFFFF)
 /** @} */
 
+// GPIO0 = 40044000
+// pad = 5
+
+// line = 40044005
+
 /**
  * @name    Line handling macros
  * @{
@@ -94,7 +99,7 @@
  * @brief   Decodes a port identifier from a line identifier.
  */
 #define PAL_PORT(line)                                                      \
-  ((sn32_gpio_t *)(((uint32_t)(line)) & 0xFFFFFFF0U))
+  ((SN_GPIO0_Type *)(((uint32_t)(line)) & 0xFFFFFFF0U))
 
 /**
  * @brief   Decodes a pad identifier from a line identifier.
@@ -107,24 +112,6 @@
  */
 #define PAL_NOLINE                      0U
 /** @} */
-
-/**
- * @brief   SN32 GPIO registers block.
- */
-typedef struct {
-
-  volatile uint32_t     DATA;
-  volatile uint32_t     MODE;
-  volatile uint32_t     CFG;
-  volatile uint32_t     IS;
-  volatile uint32_t     IBS;
-  volatile uint32_t     IEV;
-  volatile uint32_t     IE;
-  volatile uint32_t     RIS;
-  volatile uint32_t     IC;
-  volatile uint32_t     BSET;
-  volatile uint32_t     BCLR;
-} sn32_gpio_t;
 
 /**
  * @brief   GPIO port setup info.
@@ -201,7 +188,7 @@ typedef uint32_t ioline_t;
  *          any assumption about it, use the provided macros when populating
  *          variables of this type.
  */
-typedef sn32_gpio_t * ioportid_t;
+typedef SN_GPIO0_Type * ioportid_t;
 
 /*===========================================================================*/
 /* I/O Ports Identifiers.                                                    */
@@ -292,7 +279,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setport(port, bits) ((port)->BSET = (uint16_t)(bits))
+#define pal_lld_setport(port, bits) ((port)->BSET |= (uint16_t)(bits))
 
 /**
  * @brief   Clears a bits mask on a I/O port.
@@ -305,7 +292,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_clearport(port, bits) ((port)->BCLR = (uint16_t)(bits))
+#define pal_lld_clearport(port, bits) ((port)->BCLR &= ~(uint16_t)(bits))
 
 /**
  * @brief   Writes a group of bits.
@@ -323,24 +310,8 @@ typedef sn32_gpio_t * ioportid_t;
 #define pal_lld_writegroup(port, mask, offset, bits) {                      \
   uint32_t w = ((~(uint32_t)(bits) & (uint32_t)(mask)) << (16U + (offset))) | \
                ((uint32_t)(bits) & (uint32_t)(mask)) << (offset);           \
-  (port)->BSET = w;                                                       \
+  (port)->DATA = w;                                                       \
 }
-
-/**
- * @brief   Pads group mode setup.
- * @details This function programs a pads group belonging to the same port
- *          with the specified mode.
- * @note    Programming an unknown or unsupported mode is silently ignored.
- *
- * @param[in] port      port identifier
- * @param[in] mask      group mask
- * @param[in] offset    group bit offset within the port
- * @param[in] mode      group mode
- *
- * @notapi
- */
-#define pal_lld_setgroupmode(port, mask, offset, mode)                      \
-  _pal_lld_setgroupmode(port, mask << offset, mode)
 
 /**
  * @brief   Reads a logical state from an I/O pad.
@@ -373,7 +344,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_writepad(port, pad, bit) ((port)->DATA |= (bit << pad))
+#define pal_lld_writepad(port, pad, bit) ((port)->DATA = (bit << pad))
 
 /**
  * @brief   Sets a pad logical state to @p PAL_HIGH.
@@ -386,7 +357,7 @@ typedef sn32_gpio_t * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setpad(port, pad) ((port)->BSET |= (0x1 << pad))
+#define pal_lld_setpad(port, pad) ((port)->BSET = (0x1 << pad))
 
 /**
  * @brief   Clears a pad logical state to @p PAL_LOW.
@@ -438,9 +409,6 @@ extern "C" {
 #endif
   extern const PALConfig pal_default_config;
   void _pal_lld_init(const PALConfig *config);
-  void _pal_lld_setgroupmode(ioportid_t port,
-                             ioportmask_t mask,
-                             iomode_t mode);
   void _pal_lld_setpadmode(ioportid_t port,
                              uint32_t pad,
                              iomode_t mode);
