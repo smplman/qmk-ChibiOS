@@ -279,7 +279,7 @@ typedef SN_GPIO0_Type * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_setport(port, bits) ((port)->BSET |= (uint16_t)(bits))
+#define pal_lld_setport(port, bits) ((port)->BSET = (uint16_t)(bits))
 
 /**
  * @brief   Clears a bits mask on a I/O port.
@@ -292,7 +292,7 @@ typedef SN_GPIO0_Type * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_clearport(port, bits) ((port)->BCLR &= ~(uint16_t)(bits))
+#define pal_lld_clearport(port, bits) ((port)->BCLR = ~(uint16_t)(bits))
 
 /**
  * @brief   Writes a group of bits.
@@ -327,7 +327,7 @@ typedef SN_GPIO0_Type * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readpad(port, pad) ((port)->DATA | (0x0 << pad))
+#define pal_lld_readpad(port, pad) ((port)->DATA & (0x1 << pad))
 
 /**
  * @brief   Writes a logical state on an output pad.
@@ -370,7 +370,7 @@ typedef SN_GPIO0_Type * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_clearpad(port, pad) ((port)->BCLR |= (0x1 << pad))
+#define pal_lld_clearpad(port, pad) ((port)->BCLR = (0x1 << pad))
 
 /**
  * @brief   Toggles a pad logical state.

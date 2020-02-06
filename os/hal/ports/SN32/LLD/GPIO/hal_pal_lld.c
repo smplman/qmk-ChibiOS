@@ -103,8 +103,6 @@ void _pal_lld_setpadmode(ioportid_t port,
                            uint32_t pad,
                            iomode_t mode) {
 
-    // __asm__ volatile ("bkpt");
-
     switch (mode)
     {
 
@@ -112,11 +110,13 @@ void _pal_lld_setpadmode(ioportid_t port,
         break;
 
     case PAL_MODE_INPUT:
-        port->MODE |= (0 << pad);
+        // port->MODE |= (0 << pad);
+        port->MODE &= ~(1 << pad);
         break;
 
     case PAL_MODE_INPUT_PULLUP:
-        port->MODE |= (0 << pad);
+        // port->MODE |= (0 << pad);
+        port->MODE &= ~(1 << pad);
         port->CFG &= ~(3 << (pad * 2));
 		// port->CFG |= (0 <<(pad * 2));
         break;
@@ -128,7 +128,8 @@ void _pal_lld_setpadmode(ioportid_t port,
         break;
 
     case PAL_MODE_INPUT_ANALOG:
-        port->MODE |= (0 << pad);
+        // port->MODE |= (0 << pad);
+        port->MODE &= ~(1 << pad);
         port->CFG &= ~(3 << (pad * 2));
 		// port->CFG |= (3 <<(pad * 2));
         break;
@@ -138,7 +139,7 @@ void _pal_lld_setpadmode(ioportid_t port,
         // port->CFG &= ~(3 << (pad * 2));
 		// port->CFG |= (2 <<(pad * 2));
         /* Send on the output */
-        // port->BCLR = (1 << pad);
+        port->BCLR = (1 << pad);
         break;
 
     case 7:
