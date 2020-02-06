@@ -118,12 +118,16 @@ void _pal_lld_setpadmode(ioportid_t port,
         // port->MODE |= (0 << pad);
         port->MODE &= ~(1 << pad);
         port->CFG &= ~(3 << (pad * 2));
+        port->BSET = (1 << pad); // High 1
 		// port->CFG |= (0 <<(pad * 2));
         break;
 
     case PAL_MODE_INPUT_PULLDOWN:
-        port->MODE |= (0 << pad);
+        // port->MODE |= (0 << pad);
+        port->MODE &= ~(1 << pad);
         port->CFG &= ~(3 << (pad * 2));
+        port->BCLR = (1 << pad); // Low 0
+        // port->BSET = (1 << pad);
 		// port->CFG |= (2 <<(pad * 2));
         break;
 
@@ -139,7 +143,7 @@ void _pal_lld_setpadmode(ioportid_t port,
         // port->CFG &= ~(3 << (pad * 2));
 		// port->CFG |= (2 <<(pad * 2));
         /* Send on the output */
-        port->BCLR = (1 << pad);
+        // port->BCLR = (1 << pad);
         break;
 
     case 7:
