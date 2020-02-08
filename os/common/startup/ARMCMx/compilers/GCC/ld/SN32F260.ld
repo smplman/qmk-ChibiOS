@@ -16,10 +16,11 @@
 
 /*
  * SN32F240B memory setup.
+ * 0x200 entry point bootloader
  */
 MEMORY
 {
-    flash0 (rx) : org = 0x00000000, len = 30k
+    flash0 (rx) : org = 0x00000200, len = 30208
     flash1 (rx) : org = 0x00000000, len = 0
     flash2 (rx) : org = 0x00000000, len = 0
     flash3 (rx) : org = 0x00000000, len = 0
