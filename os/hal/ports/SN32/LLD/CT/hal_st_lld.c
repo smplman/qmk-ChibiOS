@@ -55,14 +55,11 @@
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
 
-uint32_t st_global_timer;
-
 OSAL_IRQ_HANDLER(SysTick_Handler) {
 
   OSAL_IRQ_PROLOGUE();
 
   osalSysLockFromISR();
-  ++st_global_timer;
   osalOsTimerHandlerI();
   osalSysUnlockFromISR();
 
