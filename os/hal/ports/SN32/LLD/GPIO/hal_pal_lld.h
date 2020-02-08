@@ -327,7 +327,7 @@ typedef SN_GPIO0_Type * ioportid_t;
  *
  * @notapi
  */
-#define pal_lld_readpad(port, pad) ((port)->DATA & (0x1 << pad))
+#define pal_lld_readpad(port, pad) (((port)->DATA >> pad) & 1)
 
 /**
  * @brief   Writes a logical state on an output pad.
