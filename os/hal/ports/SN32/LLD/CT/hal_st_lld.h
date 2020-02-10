@@ -72,9 +72,8 @@ extern "C" {
  *
  * @notapi
  */
-extern uint32_t st_global_timer;
 static inline systime_t st_lld_get_counter(void) {
-  return (systime_t)st_global_timer;
+  return (systime_t)0;
 }
 
 /**
