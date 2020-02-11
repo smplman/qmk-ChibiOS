@@ -30,9 +30,9 @@
 // __asm void Goto_Bootloader(void)
 // {
 // 		LDR			r0,=0x40060024 		//**�IMap to BL
-//         STR			r1,[r0]
-// 		LDR     r0, =0x1FFF0301		//** bootloader address = 0x1FFF0300,	under Thumb mode usage LSB=1
-// 		BX      r0
+//      STR			r1,[r0]
+// 		LDR         r0, =0x1FFF0301		//** bootloader address = 0x1FFF0300,	under Thumb mode usage LSB=1
+// 		BX          r0
 // }
 
 
